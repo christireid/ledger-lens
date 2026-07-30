@@ -25,6 +25,7 @@ export const TransactionsQuerySchema = z.object({
   sort: z.enum(["date", "amount"]).default("date"),
   dir: z.enum(["asc", "desc"]).default("desc"),
   accountIds: z.string().optional(), // comma-separated public ids
+  batchId: z.string().optional(), // §05.9: batch detail → prefiltered ledger
   from: dateStr.optional(),
   to: dateStr.optional(),
   types: z.string().optional(), // comma-separated TransactionType

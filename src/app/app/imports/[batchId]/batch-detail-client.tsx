@@ -65,7 +65,7 @@ export function BatchDetailClient({ batchId }: { batchId: string }) {
             </p>
             <div className="flex gap-2">
               <Button asChild size="sm" variant="outline">
-                <Link href={`/app/ledger`}>View accepted rows in Ledger</Link>
+                <Link href={`/app/ledger?batch=${batchId}`}>View accepted rows in Ledger</Link>
               </Button>
               {(batch.stats?.rejected ?? 0) > 0 && (
                 <Button asChild size="sm" variant="outline">

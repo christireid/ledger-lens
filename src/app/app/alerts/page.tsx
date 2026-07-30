@@ -116,6 +116,12 @@ export default function AlertsPage() {
     invalidate: [qk.alerts()],
   });
 
+  const { data: notifications } = useQuery({
+    queryKey: qk.notifications(),
+    queryFn: () => apiFetch<Array<{ id: string; title: string; body: string; createdAt: string; readAt: string | null }>>("/notifications"),
+    staleTime: 60_000,
+  });
+
   const deleteRule = useAppMutation({
     mutationFn: (id: string) => apiFetch(`/alerts/${id}`, { method: "DELETE" }),
     invalidate: [qk.alerts()],
@@ -215,10 +221,38 @@ export default function AlertsPage() {
         </div>
       )}
 
+      {/* §05.8: notification history — same data the bell popover reads. */}
+      <section className="mt-8">
+        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          Notification history
+        </h2>
+        {(notifications?.data ?? []).length === 0 ? (
+          <p className="text-sm text-muted-foreground">No notifications yet — alerts write here when they fire.</p>
+        ) : (
+          <div className="overflow-hidden rounded-lg border" data-testid="notification-history">
+            {(notifications?.data ?? []).map((n) => (
+              <div key={n.id} className="flex items-start justify-between gap-3 border-b px-3 py-2 text-sm last:border-0">
+                <div className="min-w-0">
+                  <p className="font-medium">{n.title}</p>
+                  <p className="truncate text-xs text-muted-foreground">{n.body}</p>
+                </div>
+                <span className="shrink-0 text-xs text-muted-foreground">
+                  {new Date(n.createdAt).toLocaleString("en-US")}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>New alert rule</DialogTitle>
+            <p className="text-xs text-muted-foreground">
+              Rules evaluate all history — creating or editing parameters may
+              trigger alerts on past activity (§14.5).
+            </p>
           </DialogHeader>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(submit)} className="space-y-4" data-testid="alert-form">

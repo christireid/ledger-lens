@@ -1,10 +1,11 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import * as React from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { EvidenceDrawer, type EvidenceDescriptor } from "@/components/app/evidence-drawer";
+import { ChatMarkdown } from "@/components/app/chat-markdown";
 import { Icons } from "@/components/app/icons";
 import { PageHeader } from "@/components/app/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { apiFetch, ApiError } from "@/lib/api/fetch";
 import { qk } from "@/lib/api/keys";
+import { useAppMutation } from "@/lib/api/mutations";
 
 /**
  * S-07 thread — §03.6.3 composer rules + §06.9 SSE consumption (fetch +
@@ -191,12 +193,53 @@ export function ThreadClient({ investigationId }: { investigationId: string }) {
     }
   }, [searchParams, isLoading, send]);
 
+  const router = useRouter();
+  const renameThread = useAppMutation({
+    mutationFn: (title: string) =>
+      apiFetch(`/investigations/${investigationId}`, { method: "PATCH", body: JSON.stringify({ title }) }),
+    invalidate: [qk.investigation(investigationId), qk.investigations()],
+    successToast: "Renamed",
+  });
+  const deleteThread = useAppMutation({
+    mutationFn: () => apiFetch(`/investigations/${investigationId}`, { method: "DELETE" }),
+    invalidate: [qk.investigations()],
+    onSuccess: () => router.push("/app/investigations"),
+  });
+
   const messages = data?.data.messages.filter((m) => !m.id.startsWith("optimistic-")) ?? [];
   const optimistic = data?.data.messages.filter((m) => m.id.startsWith("optimistic-")) ?? [];
 
   return (
     <div className="flex h-[calc(100vh-8.5rem)] flex-col">
-      <PageHeader title={data?.data.title ?? "Investigation"} />
+      <PageHeader
+        title={data?.data.title ?? "Investigation"}
+        actions={
+          <div className="flex gap-1">
+            {/* §05.7: rename + delete-with-confirm */}
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                const next = window.prompt("Rename investigation", data?.data.title ?? "");
+                if (next?.trim()) renameThread.mutate(next.trim());
+              }}
+            >
+              Rename
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                if (window.confirm("Delete this investigation and its messages? This cannot be undone.")) {
+                  deleteThread.mutate(undefined);
+                }
+              }}
+            >
+              Delete
+            </Button>
+          </div>
+        }
+      />
       <div ref={liveRegionRef} role="status" aria-live="polite" className="sr-only" />
 
       {aiDegraded && (
@@ -216,7 +259,15 @@ export function ThreadClient({ investigationId }: { investigationId: string }) {
             {stream.toolLabel && (
               <p className="mb-1 text-xs text-muted-foreground">{stream.toolLabel}…</p>
             )}
-            <p className="whitespace-pre-wrap">{stream.text || "…"}</p>
+            {stream.text ? (
+              <ChatMarkdown
+                content={stream.text}
+                citations={stream.citations}
+                onOpenCitation={(c) => setDrawer({ kind: "ids", ids: c.refIds })}
+              />
+            ) : (
+              <p className="whitespace-pre-wrap">…</p>
+            )}
             {stream.citations.map((c) => (
               <CitationChip key={c.ord} citation={c} onOpen={(ids) => setDrawer({ kind: "ids", ids })} />
             ))}
@@ -297,7 +348,16 @@ function ChatMessage({
       }
       data-role={message.role}
     >
-      <p className="whitespace-pre-wrap">{message.content}</p>
+      {isUser ? (
+        <p className="whitespace-pre-wrap">{message.content}</p>
+      ) : (
+        // §08.7-4/§04.6: sanitized markdown subset with inline [c:N] chips.
+        <ChatMarkdown
+          content={message.content}
+          citations={message.citations}
+          onOpenCitation={(c) => onCitation(c.refIds)}
+        />
+      )}
       {message.stopped && (
         <Badge variant="muted" className="mt-1">
           incomplete

@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import * as React from "react";
+import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
@@ -54,6 +55,7 @@ type DryRun = {
   intraFileDuplicates: number[];
   crossBatchDupes: number;
   typeTally: Record<string, number>;
+  euLocaleColumns?: string[];
 };
 
 type WireAccount = { id: string; name: string; archivedAt: string | null };
@@ -65,6 +67,11 @@ export default function ImportWizardPage() {
   const [draft, setDraft] = React.useState<Draft | null>(null);
   const [mapping, setMapping] = React.useState<Record<string, number>>({});
   const [dryRun, setDryRun] = React.useState<DryRun | null>(null);
+  const { data: workspace } = useQuery({
+    queryKey: qk.workspace(),
+    queryFn: () => apiFetch<{ id: string; name: string; isDemo: boolean }>("/workspace"),
+    staleTime: 5 * 60_000,
+  });
   const [accountId, setAccountId] = React.useState<string>("");
   const [uploadError, setUploadError] = React.useState<string | null>(null);
   const [busy, setBusy] = React.useState(false);
@@ -183,6 +190,17 @@ export default function ImportWizardPage() {
         })}
       </ol>
 
+      {step === "upload" && workspace?.data.isDemo && (
+        <div className="mb-4 rounded-md border border-warning/40 bg-warning/10 p-3 text-sm" data-testid="demo-collision">
+          {/* §02.8-10: importing real data into a demo workspace */}
+          This workspace holds demo data. Imported rows will sit alongside it —
+          clear the demo first in{" "}
+          <Link href="/app/settings?tab=workspace" className="underline underline-offset-4">
+            Settings → Demo data
+          </Link>{" "}
+          if you want a clean start.
+        </div>
+      )}
       {step === "upload" && (
         <Card>
           <CardContent className="p-8">
@@ -308,6 +326,13 @@ export default function ImportWizardPage() {
 
       {step === "preview" && dryRun && (
         <div className="space-y-4">
+          {(dryRun.euLocaleColumns ?? []).length > 0 && (
+            <div className="rounded-md border border-warning/40 bg-warning/10 p-3 text-sm" data-testid="eu-locale-warning">
+              Some numbers look European-formatted ({(dryRun.euLocaleColumns ?? []).join(", ")}
+              {") — 1.234,56 reads as 1234.56. If that's wrong, adjust the source export"}
+              {" format and re-upload; parsed amounts are shown below for verification (§15.8-3)."}
+            </div>
+          )}
           <div className="grid grid-cols-3 gap-4">
             <Card>
               <CardContent className="p-4 text-center">

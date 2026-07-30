@@ -20,6 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { apiFetch } from "@/lib/api/fetch";
 import { qk } from "@/lib/api/keys";
 import { cn } from "@/lib/utils/cn";
+import { useTheme } from "next-themes";
 
 /**
  * AppShell — §03.4: sidebar (256px / 64px rail < 1280px) + top bar (56px) +
@@ -44,6 +45,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [paletteOpen, setPaletteOpen] = React.useState(false);
+  const { resolvedTheme, setTheme } = useTheme();
   const pendingGo = React.useRef(false);
 
   const { data: workspace } = useQuery({
@@ -180,6 +182,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <CommandDialog open={paletteOpen} onOpenChange={setPaletteOpen}>
         <CommandInput placeholder="Go to page or run an action…" />
         <CommandList>
+          <PaletteDynamicGroups
+            enabled={paletteOpen}
+            onNavigate={(href) => {
+              router.push(href);
+              setPaletteOpen(false);
+            }}
+          />
           <CommandEmpty className="p-4 text-sm text-muted-foreground">No results.</CommandEmpty>
           <CommandGroup heading="Navigate">
             {NAV.map((item) => (
@@ -207,6 +216,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <CommandGroup heading="Actions">
             <CommandItem
               onSelect={() => {
+                // §04.9: the theme toggle lives in Settings AND the palette.
+                setTheme(resolvedTheme === "dark" ? "light" : "dark");
+                setPaletteOpen(false);
+              }}
+            >
+              <Icons.settings className="h-4 w-4" aria-hidden />
+              Toggle theme
+            </CommandItem>
+            <CommandItem
+              onSelect={() => {
                 router.push("/app/imports/new");
                 setPaletteOpen(false);
               }}
@@ -227,5 +246,52 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </CommandList>
       </CommandDialog>
     </div>
+  );
+}
+
+
+/** §03.3.3: the palette is data-driven — accounts and recent investigations. */
+function PaletteDynamicGroups({
+  enabled,
+  onNavigate,
+}: {
+  enabled: boolean;
+  onNavigate: (href: string) => void;
+}) {
+  const { data: accounts } = useQuery({
+    queryKey: qk.accounts(false),
+    queryFn: () => apiFetch<Array<{ id: string; name: string }>>("/accounts"),
+    staleTime: 5 * 60_000,
+    enabled,
+  });
+  const { data: investigations } = useQuery({
+    queryKey: qk.investigations(),
+    queryFn: () => apiFetch<Array<{ id: string; title: string }>>("/investigations"),
+    staleTime: 60_000,
+    enabled,
+  });
+  return (
+    <>
+      {(accounts?.data ?? []).length > 0 && (
+        <CommandGroup heading="Accounts">
+          {(accounts?.data ?? []).slice(0, 5).map((a) => (
+            <CommandItem key={a.id} onSelect={() => onNavigate(`/app/ledger?account=${a.id}`)}>
+              <Icons.ledger className="h-4 w-4" aria-hidden />
+              {a.name}
+            </CommandItem>
+          ))}
+        </CommandGroup>
+      )}
+      {(investigations?.data ?? []).length > 0 && (
+        <CommandGroup heading="Recent investigations">
+          {(investigations?.data ?? []).slice(0, 5).map((inv) => (
+            <CommandItem key={inv.id} onSelect={() => onNavigate(`/app/investigations/${inv.id}`)}>
+              <Icons.investigation className="h-4 w-4" aria-hidden />
+              {inv.title}
+            </CommandItem>
+          ))}
+        </CommandGroup>
+      )}
+    </>
   );
 }

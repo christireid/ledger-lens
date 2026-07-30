@@ -26,12 +26,17 @@ export function decodeCursor(cursor: string): { date: string; id: string } {
 
 type TxQuery = z.infer<typeof TransactionsQuerySchema>;
 
-export async function listTransactions(ctx: Ctx, db: RlsDb, q: TxQuery & { accountUuids?: string[] }) {
+export async function listTransactions(
+  ctx: Ctx,
+  db: RlsDb,
+  q: TxQuery & { accountUuids?: string[]; batchUuid?: string },
+) {
   if (!ctx.can("transactions:read")) throw new ForbiddenError();
 
   const conditions: SQL[] = [eq(transactions.workspaceId, ctx.workspaceId)];
   if (!q.includeSuperseded) conditions.push(eq(transactions.superseded, false));
   if (q.accountUuids?.length) conditions.push(inArray(transactions.accountId, q.accountUuids));
+  if (q.batchUuid) conditions.push(eq(transactions.importBatchId, q.batchUuid)); // §05.9
   if (q.from) conditions.push(gte(transactions.date, q.from));
   if (q.to) conditions.push(lte(transactions.date, q.to));
   if (q.types) {

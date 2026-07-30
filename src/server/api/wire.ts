@@ -54,9 +54,20 @@ export function accountToWire(a: Row<typeof accounts>) {
   };
 }
 
-export function anomalyToWire(a: Row<typeof anomalies>) {
+export function anomalyToWire(
+  a: Row<typeof anomalies> & {
+    evidencePreview?: Array<{ id: string; date: string; amount: string; currency: string; description: string | null }>;
+  },
+) {
   return {
     id: toPublicId("anomaly", a.id),
+    evidencePreview: (a.evidencePreview ?? []).map((p) => ({
+      id: toPublicId("transaction", p.id),
+      date: p.date,
+      amount: p.amount,
+      currency: p.currency,
+      description: p.description,
+    })),
     type: a.type,
     severity: a.severity,
     status: a.status,

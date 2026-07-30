@@ -4,7 +4,7 @@ import { and, desc, eq, inArray, type SQL } from "drizzle-orm";
 
 import type { AnomalyStatus } from "@/lib/schemas/enums";
 import type { Ctx } from "@/server/context";
-import { anomalies } from "@/server/db/schema";
+import { anomalies, transactions } from "@/server/db/schema";
 import type { RlsDb } from "@/server/db/rls";
 import { ForbiddenError, NotFoundError } from "@/server/errors";
 
@@ -17,12 +17,35 @@ export async function listAnomalies(
   const conditions: SQL[] = [eq(anomalies.workspaceId, ctx.workspaceId)];
   if (q.status) conditions.push(eq(anomalies.status, q.status));
   if (q.severity) conditions.push(eq(anomalies.severity, q.severity));
-  return db
+  const rows = await db
     .select()
     .from(anomalies)
     .where(and(...conditions))
     .orderBy(desc(anomalies.severity), desc(anomalies.createdAt))
     .limit(q.limit);
+
+  // §05.6: each card previews its first 3 evidence rows — one batched query.
+  const previewIds = [...new Set(rows.flatMap((r) => r.evidenceTxIds.slice(0, 3)))];
+  const previews = previewIds.length
+    ? await db
+        .select({
+          id: transactions.id,
+          date: transactions.date,
+          amount: transactions.amount,
+          currency: transactions.currency,
+          description: transactions.description,
+        })
+        .from(transactions)
+        .where(inArray(transactions.id, previewIds))
+    : [];
+  const byId = new Map(previews.map((p) => [p.id, p]));
+  return rows.map((r) => ({
+    ...r,
+    evidencePreview: r.evidenceTxIds
+      .slice(0, 3)
+      .map((id) => byId.get(id))
+      .filter((p): p is NonNullable<typeof p> => p !== undefined),
+  }));
 }
 
 /** POST /anomalies/:id/status — triage audit fields (US-05). */

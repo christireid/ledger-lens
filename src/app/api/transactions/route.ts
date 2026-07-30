@@ -17,9 +17,11 @@ export const GET = withApi(
             .filter((u): u is string => u !== null),
         )
       : undefined;
+    const batchUuid = query.batchId ? fromPublicId("batch", query.batchId) : null;
     const { rows, cursor, total } = await listTransactions(ctx, db, {
       ...query,
       ...(accountUuids ? { accountUuids } : {}),
+      ...(batchUuid ? { batchUuid } : {}),
     });
     return ok(
       rows.map((r) => txToWire(r.tx, r.symbol)),

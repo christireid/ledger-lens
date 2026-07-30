@@ -2,7 +2,11 @@
 
 import * as React from "react";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "sonner";
+
+import { MOTION } from "@/lib/constants/motion";
+import { useMotionSafe } from "@/lib/hooks/use-motion-safe";
 
 import { EmptyState } from "@/components/app/empty-state";
 import { EvidenceDrawer, type EvidenceDescriptor } from "@/components/app/evidence-drawer";
@@ -27,17 +31,23 @@ type WireAnomaly = {
   title: string;
   explanation: string | null;
   evidenceTxIds: string[];
+  evidencePreview: Array<{ id: string; date: string; amount: string; currency: string; description: string | null }>;
   statusChangedAt: string | null;
   createdAt: string;
 };
+
+const SEVERITIES = ["high", "medium", "low"] as const;
 
 const STATUSES = ["open", "acknowledged", "dismissed"] as const;
 
 export default function AnomaliesPage() {
   const [status, setStatus] = React.useState<string>("open");
   const [selected, setSelected] = React.useState<Set<string>>(new Set());
+  const [severityFilter, setSeverityFilter] = React.useState<string | null>(null);
+  const [typeFilter, setTypeFilter] = React.useState<string | null>(null);
   const [drawer, setDrawer] = React.useState<EvidenceDescriptor | null>(null);
   const qc = useQueryClient();
+  const motionSafe = useMotionSafe();
 
   const { data, isLoading } = useQuery({
     queryKey: qk.anomalies(status),
@@ -90,7 +100,14 @@ export default function AnomaliesPage() {
     });
   }
 
-  const anomalies = data?.data ?? [];
+  const allAnomalies = data?.data ?? [];
+  // §05.6: severity/type filter chips.
+  const typeOptions = [...new Set(allAnomalies.map((a) => a.type))];
+  const anomalies = allAnomalies.filter(
+    (a) =>
+      (severityFilter === null || a.severity === severityFilter) &&
+      (typeFilter === null || a.type === typeFilter),
+  );
 
   return (
     <>
@@ -121,6 +138,34 @@ export default function AnomaliesPage() {
         )}
       </div>
 
+      {(allAnomalies.length > 0 || severityFilter || typeFilter) && (
+        <div className="mb-3 flex flex-wrap gap-1.5" data-testid="anomaly-filters">
+          {SEVERITIES.map((sev) => (
+            <Button
+              key={sev}
+              size="sm"
+              variant={severityFilter === sev ? "default" : "outline"}
+              className="h-7 capitalize"
+              onClick={() => setSeverityFilter(severityFilter === sev ? null : sev)}
+              aria-pressed={severityFilter === sev}
+            >
+              {sev}
+            </Button>
+          ))}
+          {typeOptions.map((t) => (
+            <Button
+              key={t}
+              size="sm"
+              variant={typeFilter === t ? "default" : "outline"}
+              className="h-7"
+              onClick={() => setTypeFilter(typeFilter === t ? null : t)}
+              aria-pressed={typeFilter === t}
+            >
+              {t.replace(/_/g, " ")}
+            </Button>
+          ))}
+        </div>
+      )}
       {isLoading ? (
         <div className="space-y-3">
           {Array.from({ length: 4 }).map((_, i) => (
@@ -135,8 +180,18 @@ export default function AnomaliesPage() {
         />
       ) : (
         <div className="space-y-3" data-testid="anomaly-list">
+          <AnimatePresence initial={false}>
           {anomalies.map((a) => (
-            <Card key={a.id} data-testid="anomaly-card">
+            <motion.div
+              key={a.id}
+              layout={motionSafe}
+              exit={
+                motionSafe
+                  ? { opacity: 0, height: 0, transition: { duration: MOTION.duration.base, ease: MOTION.ease.exit } }
+                  : { opacity: 0 }
+              }
+            >
+            <Card data-testid="anomaly-card">
               <CardContent className="flex items-start gap-3 p-4">
                 {status === "open" && (
                   <Checkbox
@@ -167,6 +222,18 @@ export default function AnomaliesPage() {
                   {a.explanation && (
                     <p className="text-sm text-muted-foreground">{a.explanation}</p>
                   )}
+                  {a.evidencePreview.length > 0 && (
+                    <div className="rounded-md border bg-muted/40 px-2 py-1 font-mono text-[11px] text-muted-foreground" data-testid="evidence-preview">
+                      {a.evidencePreview.map((p) => (
+                        <div key={p.id} className="flex justify-between gap-3">
+                          <span className="truncate">
+                            {p.date} · {p.description ?? "—"}
+                          </span>
+                          <span>{p.amount} {p.currency}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   {a.evidenceTxIds.length > 0 && (
                     <button
                       type="button"
@@ -191,7 +258,9 @@ export default function AnomaliesPage() {
                 )}
               </CardContent>
             </Card>
+            </motion.div>
           ))}
+          </AnimatePresence>
         </div>
       )}
 

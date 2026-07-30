@@ -3,6 +3,7 @@
 import Link from "next/link";
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
+import { motion } from "framer-motion";
 
 import { EmptyState } from "@/components/app/empty-state";
 import { EvidenceDrawer, type EvidenceDescriptor } from "@/components/app/evidence-drawer";
@@ -28,6 +29,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { apiFetch } from "@/lib/api/fetch";
 import { qk } from "@/lib/api/keys";
+import { MOTION } from "@/lib/constants/motion";
+import { useMotionSafe } from "@/lib/hooks/use-motion-safe";
 
 type Position = {
   instrumentId: string;
@@ -47,6 +50,7 @@ type DashboardData = {
     cashValue: string | null;
     realizedPnlCum: string | null;
     positions: Position[];
+    perCurrency: Record<string, { totalValue: string; cashValue: string }> | Array<{ currency: string; totalValue: string; cashValue: string }>;
     flags: string[];
   } | null;
   series: Array<{ asOf: string; totalValue: string | null }>;
@@ -131,6 +135,27 @@ export function DashboardClient() {
           History is still backfilling — older dates fill in on the nightly run.
         </div>
       )}
+      {(() => {
+        // §02.8-4: currencies never sum — a mixed workspace shows per-currency
+        // subtotals and an explicit no-FX notice.
+        const pc = snapshot?.perCurrency;
+        const entries: Array<{ currency: string; totalValue: string }> = Array.isArray(pc)
+          ? pc
+          : pc
+            ? Object.entries(pc).map(([currency, v]) => ({ currency, totalValue: v.totalValue }))
+            : [];
+        if (entries.length <= 1) return null;
+        return (
+          <div className="mb-4 rounded-md border border-info/40 bg-info/10 p-3 text-sm" data-testid="fx-notice">
+            Multiple currencies — amounts are never converted or summed across currencies.{" "}
+            {entries.map((e) => (
+              <span key={e.currency} className="mr-3 font-mono text-xs">
+                {e.currency}: <MoneyText value={e.totalValue} currency={e.currency} />
+              </span>
+            ))}
+          </div>
+        );
+      })()}
       {incompleteCount ? (
         <div className="mb-4 rounded-md border border-info/40 bg-info/10 p-3 text-sm" data-testid="incomplete-history-notice">
           {incompleteCount} position{incompleteCount === 1 ? "" : "s"} have incomplete history —
@@ -313,6 +338,7 @@ function StatCard({
   directional?: boolean;
   onClick?: () => void;
 }) {
+  const motionSafe = useMotionSafe();
   return (
     <Card className="col-span-3">
       <button
@@ -325,9 +351,15 @@ function StatCard({
           <CardTitle>{label}</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-3xl font-semibold">
+          <motion.div
+            key={value ?? "none"}
+            className="text-3xl font-semibold"
+            initial={motionSafe ? { opacity: 0.4, y: 4 } : false}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: MOTION.duration.base, ease: MOTION.ease.standard }}
+          >
             <MoneyText value={value} showDirection={directional} compact={Math.abs(Number(value ?? 0)) >= 10_000_000} />
-          </div>
+          </motion.div>
           {delta != null && (
             <p className="mt-1 text-xs text-muted-foreground">
               <MoneyText value={delta} showDirection /> excl. contributions

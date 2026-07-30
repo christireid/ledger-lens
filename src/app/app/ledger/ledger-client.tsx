@@ -3,6 +3,7 @@
 import Link from "next/link";
 import * as React from "react";
 import { keepPreviousData, useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { motion } from "framer-motion";
 import { z } from "zod";
 
 import { EmptyState } from "@/components/app/empty-state";
@@ -24,10 +25,13 @@ import {
 import { apiFetch } from "@/lib/api/fetch";
 import { qk } from "@/lib/api/keys";
 import { useUrlFilters } from "@/lib/hooks/use-url-filters";
+import { MOTION } from "@/lib/constants/motion";
+import { useMotionSafe } from "@/lib/hooks/use-motion-safe";
 
 /** URL filter schema — §06.6: same Zod family the API accepts. */
 const LedgerFilterSchema = z.object({
   account: z.string().optional().catch(undefined),
+  batch: z.string().optional().catch(undefined),
   from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().catch(undefined),
   to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().catch(undefined),
   types: z.string().optional().catch(undefined),
@@ -67,6 +71,7 @@ export function LedgerClient() {
   const { filters, set, setDebounced, clear } = useUrlFilters<LedgerFilters>(LedgerFilterSchema);
   const [expanded, setExpanded] = React.useState<string | null>(null);
   const [searchDraft, setSearchDraft] = React.useState(filters.q ?? "");
+  const motionSafe = useMotionSafe();
 
   const { data: accounts } = useQuery({
     queryKey: qk.accounts(true),
@@ -77,6 +82,7 @@ export function LedgerClient() {
   const queryString = React.useMemo(() => {
     const params = new URLSearchParams();
     if (filters.account) params.set("accountIds", filters.account);
+    if (filters.batch) params.set("batchId", filters.batch);
     if (filters.from) params.set("from", filters.from);
     if (filters.to) params.set("to", filters.to);
     if (filters.types) params.set("types", filters.types);
@@ -111,6 +117,7 @@ export function LedgerClient() {
     filters.min && { key: "min", label: `≥ ${filters.min}` },
     filters.max && { key: "max", label: `≤ ${filters.max}` },
     filters.q && { key: "q", label: `"${filters.q}"` },
+    filters.batch && { key: "batch", label: `batch ${filters.batch.slice(0, 14)}…` },
   ].filter(Boolean) as Array<{ key: string; label: string }>;
 
   function accountLabel(id: string): string {
@@ -321,7 +328,13 @@ export function LedgerClient() {
                   {expanded === tx.id && (
                     <TableRow className="bg-muted/30">
                       <TableCell colSpan={7}>
-                        <div className="grid grid-cols-3 gap-3 p-2 text-xs" data-testid="row-expansion">
+                        {/* §03.8.2 row expansion: height/opacity ease-in, honoring reduced motion. */}
+                        <motion.div
+                          initial={motionSafe ? { opacity: 0, height: 0 } : false}
+                          animate={{ opacity: 1, height: "auto" }}
+                          transition={{ duration: MOTION.duration.base, ease: MOTION.ease.standard }}
+                          className="grid grid-cols-3 gap-3 overflow-hidden p-2 text-xs"
+                          data-testid="row-expansion">
                           <div>
                             <p className="font-medium text-muted-foreground">Lineage</p>
                             <p>
@@ -341,7 +354,7 @@ export function LedgerClient() {
                             <p className="font-medium text-muted-foreground">Full description</p>
                             <p className="break-words">{tx.description || "—"}</p>
                           </div>
-                        </div>
+                        </motion.div>
                       </TableCell>
                     </TableRow>
                   )}
