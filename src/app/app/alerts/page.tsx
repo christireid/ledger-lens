@@ -197,7 +197,16 @@ export default function AlertsPage() {
                   onCheckedChange={(enabled) => toggleRule.mutate({ id: rule.id, enabled })}
                   aria-label={`${rule.enabled ? "Disable" : "Enable"} ${rule.name}`}
                 />
-                <Button size="sm" variant="ghost" onClick={() => deleteRule.mutate(rule.id)}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    // §03.6.5: destructive confirm before deleting a rule.
+                    if (window.confirm(`Delete alert rule "${rule.name}"? Past notifications remain.`)) {
+                      deleteRule.mutate(rule.id);
+                    }
+                  }}
+                >
                   Delete
                 </Button>
               </CardContent>

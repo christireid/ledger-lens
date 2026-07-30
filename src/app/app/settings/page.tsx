@@ -38,6 +38,9 @@ export default function SettingsPage() {
   );
   const [deleteConfirm, setDeleteConfirm] = React.useState("");
   const [deleteOpen, setDeleteOpen] = React.useState(false);
+  const [archiveTarget, setArchiveTarget] = React.useState<WireAccount | null>(null);
+  const [renamingId, setRenamingId] = React.useState<string | null>(null);
+  const [renameDraft, setRenameDraft] = React.useState("");
   const [newAccountName, setNewAccountName] = React.useState("");
   const [newAccountType, setNewAccountType] = React.useState("bank");
 
@@ -79,6 +82,23 @@ export default function SettingsPage() {
     mutationFn: (id: string) => apiFetch(`/accounts/${id}/archive`, { method: "POST" }),
     invalidate: [["accounts"], ["transactions"], ["dashboard"]],
     successToast: "Account archived",
+    onSuccess: () => setArchiveTarget(null),
+  });
+
+  // §02.8-8: archive is reversible.
+  const unarchiveAccount = useAppMutation({
+    mutationFn: (id: string) =>
+      apiFetch(`/accounts/${id}/archive`, { method: "POST", body: JSON.stringify({ unarchive: true }) }),
+    invalidate: [["accounts"], ["transactions"], ["dashboard"]],
+    successToast: "Account restored",
+  });
+
+  const renameAccount = useAppMutation({
+    mutationFn: ({ id, name }: { id: string; name: string }) =>
+      apiFetch(`/accounts/${id}`, { method: "PATCH", body: JSON.stringify({ name }) }),
+    invalidate: [["accounts"]],
+    successToast: "Account renamed",
+    onSuccess: () => setRenamingId(null),
   });
 
   async function deleteWorkspace() {
@@ -208,13 +228,50 @@ export default function SettingsPage() {
                 {(accounts?.data ?? [])
                   .filter((a) => !a.archivedAt)
                   .map((a) => (
-                    <div key={a.id} className="flex items-center justify-between rounded-md border p-3">
-                      <span className="text-sm font-medium">
-                        {a.name} <Badge variant="muted">{a.type}</Badge>
-                      </span>
-                      <Button size="sm" variant="ghost" onClick={() => archiveAccount.mutate(a.id)}>
-                        Archive
-                      </Button>
+                    <div key={a.id} className="flex items-center justify-between gap-2 rounded-md border p-3">
+                      {renamingId === a.id ? (
+                        <form
+                          className="flex flex-1 items-center gap-2"
+                          onSubmit={(e) => {
+                            e.preventDefault();
+                            renameAccount.mutate({ id: a.id, name: renameDraft });
+                          }}
+                        >
+                          <Input
+                            value={renameDraft}
+                            onChange={(e) => setRenameDraft(e.target.value)}
+                            aria-label={`Rename ${a.name}`}
+                            className="h-8 max-w-56"
+                          />
+                          <Button size="sm" type="submit" disabled={!renameDraft.trim()}>
+                            Save
+                          </Button>
+                          <Button size="sm" type="button" variant="ghost" onClick={() => setRenamingId(null)}>
+                            Cancel
+                          </Button>
+                        </form>
+                      ) : (
+                        <span className="text-sm font-medium">
+                          {a.name} <Badge variant="muted">{a.type}</Badge>
+                        </span>
+                      )}
+                      <div className="flex shrink-0 gap-1">
+                        {renamingId !== a.id && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              setRenamingId(a.id);
+                              setRenameDraft(a.name);
+                            }}
+                          >
+                            Rename
+                          </Button>
+                        )}
+                        <Button size="sm" variant="ghost" onClick={() => setArchiveTarget(a)}>
+                          Archive
+                        </Button>
+                      </div>
                     </div>
                   ))}
               </div>
@@ -228,8 +285,12 @@ export default function SettingsPage() {
                       .filter((a) => a.archivedAt)
                       .map((a) => (
                         <div key={a.id} className="flex items-center justify-between rounded-md border p-3 opacity-70">
-                          <span className="text-sm">{a.name}</span>
-                          <Badge variant="muted">archived</Badge>
+                          <span className="text-sm">
+                            {a.name} <Badge variant="muted">archived</Badge>
+                          </span>
+                          <Button size="sm" variant="ghost" onClick={() => unarchiveAccount.mutate(a.id)}>
+                            Unarchive
+                          </Button>
                         </div>
                       ))}
                   </div>
@@ -319,6 +380,31 @@ export default function SettingsPage() {
               onClick={() => void deleteWorkspace()}
             >
               Delete workspace
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* §03.6.5: destructive confirm — archiving hides the account's rows from defaults. */}
+      <Dialog open={archiveTarget !== null} onOpenChange={(open) => !open && setArchiveTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Archive &quot;{archiveTarget?.name}&quot;?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Its transactions stay in the ledger but leave default views and metrics.
+            You can unarchive at any time.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setArchiveTarget(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => archiveTarget && archiveAccount.mutate(archiveTarget.id)}
+              disabled={archiveAccount.isPending}
+            >
+              Archive account
             </Button>
           </DialogFooter>
         </DialogContent>

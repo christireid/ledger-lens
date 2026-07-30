@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { EmptyState } from "@/components/app/empty-state";
@@ -42,7 +42,8 @@ export default function AnomaliesPage() {
   const { data, isLoading } = useQuery({
     queryKey: qk.anomalies(status),
     queryFn: () => apiFetch<WireAnomaly[]>(`/anomalies?status=${status}`),
-    staleTime: 30_000,
+    staleTime: 60_000, // §20.6 findings
+    placeholderData: keepPreviousData,
   });
 
   const setStatusMutation = useAppMutation({

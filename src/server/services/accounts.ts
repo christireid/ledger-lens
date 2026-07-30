@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull , sql as rawSql } from "drizzle-orm";
 import type { z } from "zod";
 
 import type { AccountInputSchema, AccountPatchSchema } from "@/lib/schemas/api";
@@ -66,12 +66,21 @@ export async function patchAccount(
   }
 }
 
-/** §02.8-8 archive: rows never orphaned; queries exclude archived by default. */
-export async function archiveAccount(ctx: Ctx, db: RlsDb, id: string) {
+/**
+ * §02.8-8 archive: rows never orphaned; queries exclude archived by default;
+ * archive is reversible. §07.11-4: timestamps come from SQL now(), never the
+ * app server's clock.
+ */
+export async function archiveAccount(
+  ctx: Ctx,
+  db: RlsDb,
+  id: string,
+  opts: { unarchive?: boolean } = {},
+) {
   if (!ctx.can("accounts:manage")) throw new ForbiddenError();
   const [row] = await db
     .update(accounts)
-    .set({ archivedAt: new Date() })
+    .set({ archivedAt: opts.unarchive ? null : rawSql`now()` })
     .where(and(eq(accounts.id, id), eq(accounts.workspaceId, ctx.workspaceId)))
     .returning();
   if (!row) throw new NotFoundError();

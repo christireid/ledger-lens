@@ -5,7 +5,7 @@ import { and, desc, eq, sql as rawSql } from "drizzle-orm";
 import type { MarketDate } from "@/lib/schemas";
 import type { RangeKey } from "@/lib/schemas/api";
 import type { Ctx } from "@/server/context";
-import { anomalies, portfolioSnapshots } from "@/server/db/schema";
+import { anomalies, portfolioSnapshots , importBatches } from "@/server/db/schema";
 import type { RlsDb } from "@/server/db/rls";
 import { ForbiddenError } from "@/server/errors";
 import {
@@ -48,7 +48,7 @@ export async function getDashboard(ctx: Ctx, db: RlsDb, range: RangeKey, today: 
     .orderBy(desc(portfolioSnapshots.asOf))
     .limit(1);
 
-  const [series, aggregates, realized, change, openAnomalies] = await Promise.all([
+  const [series, aggregates, realized, change, openAnomalies, recentImports] = await Promise.all([
     snapshotSeries(ctx, db, from, to),
     periodAggregates(ctx, db, from, to),
     realizedPnlForPeriod(ctx, db, from, to),
@@ -65,7 +65,28 @@ export async function getDashboard(ctx: Ctx, db: RlsDb, range: RangeKey, today: 
       .where(and(eq(anomalies.workspaceId, ctx.workspaceId), eq(anomalies.status, "open")))
       .orderBy(desc(anomalies.severity), desc(anomalies.createdAt))
       .limit(5),
+    // Zone 6 (§05.4): recent imports strip — last three batches.
+    db
+      .select({
+        id: importBatches.id,
+        fileName: importBatches.fileName,
+        status: importBatches.status,
+        stats: importBatches.stats,
+        createdAt: importBatches.createdAt,
+      })
+      .from(importBatches)
+      .where(eq(importBatches.workspaceId, ctx.workspaceId))
+      .orderBy(desc(importBatches.createdAt))
+      .limit(3),
   ]);
+
+  // §13.2 Unrealized P&L: Σ over priced, complete-history positions.
+  const unrealizedPnl = (
+    (latest?.positions ?? []) as Array<{ unrealizedPnl: string | null; flags?: string[] }>
+  )
+    .filter((p) => p.unrealizedPnl !== null && !(p.flags ?? []).includes("incomplete_history"))
+    .reduce((acc, p) => acc + Number(p.unrealizedPnl), 0)
+    .toFixed(4);
 
   return {
     range,
@@ -86,8 +107,16 @@ export async function getDashboard(ctx: Ctx, db: RlsDb, range: RangeKey, today: 
     series,
     aggregates,
     realizedPnl: realized,
+    unrealizedPnl,
     valueChange: change,
     openAnomalies,
+    recentImports: recentImports.map((b) => ({
+      id: b.id,
+      fileName: b.fileName,
+      status: b.status,
+      stats: b.stats,
+      createdAt: b.createdAt?.toISOString?.() ?? String(b.createdAt),
+    })),
   };
 }
 

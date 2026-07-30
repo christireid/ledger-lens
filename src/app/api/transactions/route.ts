@@ -17,13 +17,13 @@ export const GET = withApi(
             .filter((u): u is string => u !== null),
         )
       : undefined;
-    const { rows, cursor } = await listTransactions(ctx, db, {
+    const { rows, cursor, total } = await listTransactions(ctx, db, {
       ...query,
       ...(accountUuids ? { accountUuids } : {}),
     });
     return ok(
       rows.map((r) => txToWire(r.tx, r.symbol)),
-      { cursor },
+      { cursor, total },
     );
   },
 );

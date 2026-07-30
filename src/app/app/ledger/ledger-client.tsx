@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import * as React from "react";
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { z } from "zod";
 
 import { EmptyState } from "@/components/app/empty-state";
@@ -97,8 +97,10 @@ export function LedgerClient() {
     },
     initialPageParam: "",
     getNextPageParam: (last) => last.meta?.cursor ?? undefined,
-    staleTime: 5 * 60_000,
+    staleTime: 30_000, // §20.6 transactions pages
+    placeholderData: keepPreviousData, // §20.6: filtered lists keep prior rows
   });
+  const total = query.data?.pages[0]?.meta?.total;
 
   const rows = query.data?.pages.flatMap((p) => p.data) ?? [];
   const activeChips = [
@@ -254,6 +256,14 @@ export function LedgerClient() {
         )
       ) : (
         <>
+          {/* §03.6.1/§05.5: exact count below 10k, "10,000+" above. */}
+          <p className="mb-2 text-xs text-muted-foreground" aria-live="polite" data-testid="ledger-total">
+            {total === undefined
+              ? ""
+              : total === "10000+"
+                ? "10,000+ transactions match"
+                : `${Number(total).toLocaleString("en-US")} transaction${Number(total) === 1 ? "" : "s"} match`}
+          </p>
           <Table data-testid="ledger-table">
             <TableHeader>
               <TableRow>
@@ -368,14 +378,18 @@ function SortButton({
   set: (patch: Record<string, unknown>, opts?: { history?: boolean }) => void;
 }) {
   const active = filters.sort === col;
-  const nextDir = active && filters.dir === "desc" ? "asc" : "desc";
   return (
     <button
       type="button"
       className="inline-flex items-center gap-1 uppercase"
       onClick={(e) => {
         e.stopPropagation();
-        set({ sort: col, dir: nextDir }, { history: true });
+        // §03.6.1 tri-state: desc → asc → none (falls back to the date default),
+        // and sorting scrolls back to the top of the results.
+        if (!active) set({ sort: col, dir: "desc" }, { history: true });
+        else if (filters.dir === "desc") set({ sort: col, dir: "asc" }, { history: true });
+        else set({ sort: undefined, dir: undefined }, { history: true });
+        window.scrollTo({ top: 0 });
       }}
       aria-label={`Sort by ${label}, currently ${active ? filters.dir : "unsorted"}`}
     >

@@ -100,7 +100,18 @@ export async function listTransactions(ctx: Ctx, db: RlsDb, q: TxQuery & { accou
     hasMore && last && q.sort === "date"
       ? encodeCursor(last.tx.date, last.tx.id)
       : null;
-  return { rows: page, cursor };
+
+  // §03.6.1/§05.5 total count: exact below 10k, "10,000+" above — the capped
+  // count keeps the query bounded (LIMIT 10001 scan, index-served).
+  const countRows = (await db.execute(rawSql`
+    select count(*)::int as n from (
+      select 1 from transactions where ${and(...conditions)} limit 10001
+    ) capped
+  `)) as unknown as Array<{ n: number }>;
+  const n = countRows[0]?.n ?? 0;
+  const total: number | "10000+" = n > 10_000 ? "10000+" : n;
+
+  return { rows: page, cursor, total };
 }
 
 export async function getTransaction(ctx: Ctx, db: RlsDb, id: string) {

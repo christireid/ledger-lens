@@ -52,8 +52,16 @@ type DashboardData = {
   series: Array<{ asOf: string; totalValue: string | null }>;
   aggregates: Array<{ currency: string; income: string; fees: string; netContribution: string }>;
   realizedPnl: string;
+  unrealizedPnl: string;
   valueChange: { change: string; endValue: string | null } | null;
   openAnomalies: Array<{ id: string; type: string; severity: string; title: string }>;
+  recentImports: Array<{
+    id: string;
+    fileName: string | null;
+    status: string;
+    stats: { accepted?: number; rejected?: number } | null;
+    createdAt: string;
+  }>;
 };
 
 const RANGES = ["30d", "90d", "ytd", "1y", "all"] as const;
@@ -65,7 +73,8 @@ export function DashboardClient() {
   const { data, isLoading } = useQuery({
     queryKey: qk.dashboard(range),
     queryFn: () => apiFetch<DashboardData>(`/dashboard?range=${range}`),
-    staleTime: 60_000,
+    staleTime: 5 * 60_000, // §20.6 snapshot-derived data
+    refetchOnWindowFocus: false, // §20.6: snapshots change on recompute, not focus
   });
 
   const d = data?.data;
@@ -134,6 +143,7 @@ export function DashboardClient() {
         <StatCard
           label="Total value"
           value={snapshot?.totalValue ?? null}
+          delta={d?.valueChange?.change ?? null}
           onClick={() => setDrawer({ kind: "filter", query: "limit=50" })}
         />
         <StatCard
@@ -144,10 +154,10 @@ export function DashboardClient() {
           }
         />
         <StatCard
-          label="Change (excl. contributions)"
-          value={d?.valueChange?.change ?? null}
+          label="Unrealized P&L"
+          value={d?.unrealizedPnl ?? null}
           directional
-          onClick={() => setDrawer({ kind: "filter", query: "limit=50" })}
+          onClick={() => setDrawer({ kind: "filter", query: "types=buy,sell&limit=50" })}
         />
         <StatCard
           label="Realized P&L"
@@ -260,6 +270,26 @@ export function DashboardClient() {
         </Card>
       </div>
 
+      {/* Zone 6 (§05.4): recent imports strip */}
+      {(d?.recentImports ?? []).length > 0 && (
+        <div className="mt-6 flex flex-wrap items-center gap-3 rounded-lg border p-3 text-sm" data-testid="recent-imports">
+          <span className="text-xs uppercase tracking-wide text-muted-foreground">Recent imports</span>
+          {(d?.recentImports ?? []).map((b) => (
+            <Link
+              key={b.id}
+              href={`/app/imports/${b.id}`}
+              className="inline-flex items-center gap-1.5 rounded-md border px-2 py-1 hover:bg-muted"
+            >
+              <span className="max-w-40 truncate font-mono text-xs">{b.fileName ?? "import"}</span>
+              <Badge variant="muted">{b.status}</Badge>
+              {typeof b.stats?.accepted === "number" && (
+                <span className="text-xs text-muted-foreground">{b.stats.accepted} rows</span>
+              )}
+            </Link>
+          ))}
+        </div>
+      )}
+
       <EvidenceDrawer
         descriptor={drawer}
         open={drawer !== null}
@@ -272,11 +302,14 @@ export function DashboardClient() {
 function StatCard({
   label,
   value,
+  delta,
   directional = false,
   onClick,
 }: {
   label: string;
   value: string | null;
+  /** §13.2 flow-adjusted change for the period — "change excl. contributions". */
+  delta?: string | null;
   directional?: boolean;
   onClick?: () => void;
 }) {
@@ -295,6 +328,11 @@ function StatCard({
           <div className="text-3xl font-semibold">
             <MoneyText value={value} showDirection={directional} compact={Math.abs(Number(value ?? 0)) >= 10_000_000} />
           </div>
+          {delta != null && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              <MoneyText value={delta} showDirection /> excl. contributions
+            </p>
+          )}
         </CardContent>
       </button>
     </Card>
