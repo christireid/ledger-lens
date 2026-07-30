@@ -113,25 +113,64 @@ Spec inputs: 08, 17.3, 05.7. Verify: `pnpm eval` (mocked transport green); US-06
 ### M9 — Hardening & launch
 Spec inputs: 19, 20, 21, 22 gaps, 24, 25. Verify: Lighthouse CI ≥ budgets; axe zero serious/critical; `pnpm verify:all` fully green.
 
-- [ ] axe per screen/state
-- [ ] Budgets in CI
-- [ ] CSP/headers
-- [ ] Sentry
-- [ ] Health endpoint
-- [ ] README (visual, portfolio-grade)
-- [ ] Launch checklist
-- [ ] Verify gate green
+- [x] axe per screen/state (e2e/a11y.spec.ts — marketing + 8 app screens seeded + kitchen sink; zero serious/critical; fixed filter-tab aria-controls, warning contrast 3.46→5.12, ledger aria-expanded-on-row)
+- [x] Budgets in CI (perf-budgets.json + scripts/size-check.mjs, all routes ≤ ceiling; Lighthouse harness scripts/lighthouse-ci.mjs — §20.8 assertions pass: perf 92–100, LCP ≤ 810ms, CLS ≤ 0.001, TBT ≤ 216ms; .github/workflows/ci.yml wires all §23.5 stages)
+- [x] CSP/headers (§21.4 policy verbatim: per-request nonce + strict-dynamic, no unsafe-inline in script-src; nonce via request headers + dynamic rendering of all HTML routes; e2e/headers.spec.ts asserts headers AND zero CSP console violations — the first middleware-only attempt silently blocked all client JS and is logged in DECISIONS.md)
+- [x] Sentry (§24.4 seam: deny-by-default scrub unit-tested, release + digest/requestId tags, store-API delivery when DSN set; structured logger §24.2 with redaction backstop + no-console lint gate; §24.5 events wired: request, ratelimit_failopen, ai_stream, service)
+- [x] Health endpoint (M5-built; §24.6 503 now returns the §17.1 upstream_unavailable envelope; 200/503 shapes unit-tested)
+- [x] README (visual, portfolio-grade — hero shot, 2 GIFs, 6 screenshots from the seeded workspace via scripts/capture-media.mjs; architecture mermaid; measured-gates table; §21.10 non-goals + §23.9 caveats verbatim; §25.7 status section)
+- [x] Launch checklist (docs/launch-checklist.md — §25.4 items with explicit operator gaps; evidence/ pack committed: axe, Lighthouse, bundle, RLS probe; PR template §25.2; flag-age lint §25.5; CHANGELOG §25.3)
+- [x] Verify gate green — verify:all + 17 E2E (journeys US-01…05,07; US-06; a11y; headers) + Lighthouse + size, all on the final tree (2026-07-30)
 
 ---
 
 ## Completion Gate audit (27.6) — per-section acceptance checklists
 
-To be audited with pass/fail notes when milestones complete. Failures block.
+Audited 2026-07-30 on the final tree. ✅ = acceptance criteria pass via the
+named gate; ⚙️ = the criterion requires live credentials/deploy the operator
+did not provide (§27.3) — the code path exists and is verified as far as it
+can be without them. Failures: none.
 
-| Section | Audited | Result |
+| Section | Result | Evidence / notes |
 | --- | --- | --- |
-| 02–25 | ⬜ pending | — |
+| 00 Rubric gates | ✅ | Re-affirmed: determinism (byte-stable seed + goldens), explainability (evidence drawer everywhere, server-side citations), tenant isolation (11/11 probes), honesty (non-goals/caveats verbatim in README) |
+| 02 Product scope | ✅ | All M-priority features built; S-priority behind default-off flags; no X-priority code exists |
+| 03 UX & states | ✅ | §03.5 states per screen (kitchen sink renders them; axe-audited); deep-link preservation E2E-tested |
+| 04 Design system | ✅ | Token-only styling (arch-grep bans arbitraries/hex); icon registry lint; kitchen sink §04.13 |
+| 05 Screens S-01…S-13 | ✅ | Journeys E2E US-01…05, 07; empty/degraded states asserted |
+| 06 Frontend arch | ✅ | Query-key factory + invalidation map (lint-enforced raw-key ban); hydration gate in E2E; bundle discipline §20.3 |
+| 07 Backend arch | ✅ | withApi single composition point (route-walk parity test both directions); typed env; flags; gateway seam |
+| 08 AI pipeline | ✅ | 29-case eval suite green (mock transport per §27.4); tool ceiling read-only; citations server-side; breaker tested. ⚙️ real-key smoke needs OPENAI_API_KEY |
+| 09 Data model | ✅ | Forward-only migrations; column-grant immutability + RLS probed (evidence/rls-probe.txt); statement timeout tested |
+| 10 Auth & tenancy | ✅ | Route matrix 20×2 tested; bootstrap race N=12→1; anti-oracle 404s contract-tested. ⚙️ live Clerk sign-in needs keys |
+| 11 Permissions | ✅ | can() at every service head (arch-grep); role fixtures in contract suite |
+| 12 Portfolio engine | ✅ | 16 hand-verified goldens + property tests; 50k replay 0.5s vs 20s budget; advisory-lock serialization test |
+| 13 Dashboard metrics | ✅ | Metric parity integration tests §13.5; chart payload cap contract test |
+| 14 Detection | ✅ | Detector fixture battery; all 6 planted demo findings fire (E2E); dedup double-run; preview parity; failure isolation |
+| 15 Imports & demo | ✅ | 40-file adversarial corpus; 3-layer duplicate policy tests; idempotent commit; seed byte-stable across 2 clean runs |
+| 16 Type system | ✅ | Branded primitives (Money/Qty); §16 names win (0 conflicts logged); tsc strict+ green |
+| 17 API contract | ✅ | 73 generated contract tests; OpenAPI at /api/docs from the same inventory; SSE event shapes tested |
+| 18 Errors | ✅ | Closed ErrorCode enum; §18.3 sanitization tests; digest/requestId reference path unit-tested |
+| 19 Accessibility | ✅ | axe zero serious/critical across 10 screens (evidence/axe-summary.json); keyboard paths in journeys E2E. ⚙️ screen-reader walkthroughs are manual §25.4 gates |
+| 20 Performance | ✅ | All budgets measured under ceiling (README table; evidence/); LHCI assertions §20.8 pass; EXPLAIN baselines checked in |
+| 21 Security | ✅ | §21.4 CSP verbatim + §21.12 header spec (incl. no-unsafe-inline + zero-violation check); upload hardening corpus; secrets inventory = §23.4 (unit test) |
+| 22 Testing strategy | ✅ | All seven suites blocking and green: unit/property/integration/contract/E2E/a11y/eval |
+| 23 DevOps | ✅ | CI stages match §23.5 names; nightly (eval/audit/synthetic/backup) exists. ⚙️ Vercel preview legs + prod migrate-then-promote need a Vercel project; backup artifacts need secrets |
+| 24 Monitoring | ✅ | §24.2 logger + redaction test; no-console lint; health 200/503 envelopes tested; Sentry seam scrub tested. ⚙️ live alert rules + uptime check need DSN/prod URL |
+| 25 Release | ✅ | PR template §25.2; flag-age lint in CI; CHANGELOG + v1.0.0-mvp tag; launch checklist with §25.4 items; §25.7 status in README |
 
-## Deviations log
+## Deviations log (27.6 final report input)
 
-- None yet.
+1. **Supabase/Clerk/OpenAI/Upstash/Vercel/Sentry credentials absent** (operator
+   config §27.3) — every dependent path is built behind its documented seam and
+   verified against local Postgres / mock transport / keyless auth; the
+   specific unverifiable criteria are the ⚙️ rows above and the launch
+   checklist's operator items.
+2. **Sentry SDK → thin DSN reporter** (§24.4) — contract kept (scrub, tags,
+   release), swap contained to one file; rationale in DECISIONS.md.
+3. **E2E/LHCI target a local prod build, not a Vercel preview** (§23.5) when
+   `VERCEL_PREVIEW_ENABLED` ≠ true — both stages stay blocking.
+4. **D2 evaluates all historical months; demo dataset v1.1.0** — spec-consistent
+   resolutions logged in DECISIONS.md.
+5. **v1.0.0-mvp tag** per §27.6 alongside §25.3's date-tag scheme (CHANGELOG
+   heading carries both).
