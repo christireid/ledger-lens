@@ -26,6 +26,7 @@ export const TransactionsQuerySchema = z.object({
   dir: z.enum(["asc", "desc"]).default("desc"),
   accountIds: z.string().optional(), // comma-separated public ids
   batchId: z.string().optional(), // §05.9: batch detail → prefiltered ledger
+  countOnly: z.enum(["1"]).optional(), // §05.5 capped count as its own request
   from: dateStr.optional(),
   to: dateStr.optional(),
   types: z.string().optional(), // comma-separated TransactionType

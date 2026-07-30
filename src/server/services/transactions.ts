@@ -26,13 +26,10 @@ export function decodeCursor(cursor: string): { date: string; id: string } {
 
 type TxQuery = z.infer<typeof TransactionsQuerySchema>;
 
-export async function listTransactions(
+function buildConditions(
   ctx: Ctx,
-  db: RlsDb,
   q: TxQuery & { accountUuids?: string[]; batchUuid?: string },
-) {
-  if (!ctx.can("transactions:read")) throw new ForbiddenError();
-
+): SQL[] {
   const conditions: SQL[] = [eq(transactions.workspaceId, ctx.workspaceId)];
   if (!q.includeSuperseded) conditions.push(eq(transactions.superseded, false));
   if (q.accountUuids?.length) conditions.push(inArray(transactions.accountId, q.accountUuids));
@@ -64,6 +61,17 @@ export async function listTransactions(
       rawSql`${transactions.accountId} in (select id from accounts where workspace_id = ${ctx.workspaceId} and archived_at is null)`,
     );
   }
+  return conditions;
+}
+
+export async function listTransactions(
+  ctx: Ctx,
+  db: RlsDb,
+  q: TxQuery & { accountUuids?: string[]; batchUuid?: string },
+) {
+  if (!ctx.can("transactions:read")) throw new ForbiddenError();
+
+  const conditions = buildConditions(ctx, q);
   if (q.cursor) {
     const { date, id } = decodeCursor(q.cursor);
     conditions.push(
@@ -105,18 +113,28 @@ export async function listTransactions(
     hasMore && last && q.sort === "date"
       ? encodeCursor(last.tx.date, last.tx.id)
       : null;
+  return { rows: page, cursor };
+}
 
-  // §03.6.1/§05.5 total count: exact below 10k, "10,000+" above — the capped
-  // count keeps the query bounded (LIMIT 10001 scan, index-served).
+/**
+ * §03.6.1/§05.5 total count: exact below 10k, "10,000+" above. Separate from
+ * the page query so the filter round-trip budget (§20.2) covers rows only —
+ * the client fetches the count in parallel and fills it in progressively.
+ */
+export async function countTransactions(
+  ctx: Ctx,
+  db: RlsDb,
+  q: TxQuery & { accountUuids?: string[]; batchUuid?: string },
+): Promise<number | "10000+"> {
+  if (!ctx.can("transactions:read")) throw new ForbiddenError();
+  const conditions = buildConditions(ctx, q);
   const countRows = (await db.execute(rawSql`
     select count(*)::int as n from (
       select 1 from transactions where ${and(...conditions)} limit 10001
     ) capped
   `)) as unknown as Array<{ n: number }>;
   const n = countRows[0]?.n ?? 0;
-  const total: number | "10000+" = n > 10_000 ? "10000+" : n;
-
-  return { rows: page, cursor, total };
+  return n > 10_000 ? "10000+" : n;
 }
 
 export async function getTransaction(ctx: Ctx, db: RlsDb, id: string) {

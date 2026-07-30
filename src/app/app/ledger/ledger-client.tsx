@@ -106,7 +106,14 @@ export function LedgerClient() {
     staleTime: 30_000, // §20.6 transactions pages
     placeholderData: keepPreviousData, // §20.6: filtered lists keep prior rows
   });
-  const total = query.data?.pages[0]?.meta?.total;
+  // §05.5 count is a separate, non-blocking request (§20.2 budget covers rows).
+  const { data: countData } = useQuery({
+    queryKey: qk.transactions({ ...filters, countOnly: true }),
+    queryFn: () => apiFetch<never[]>(`/transactions?${queryString}&countOnly=1`),
+    staleTime: 30_000,
+    placeholderData: keepPreviousData,
+  });
+  const total = countData?.meta?.total;
 
   const rows = query.data?.pages.flatMap((p) => p.data) ?? [];
   const activeChips = [
