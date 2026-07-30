@@ -133,7 +133,8 @@ can be without them. Failures: none.
 
 | Section | Result | Evidence / notes |
 | --- | --- | --- |
-| 00 Rubric gates | ✅ | Re-affirmed: determinism (byte-stable seed + goldens), explainability (evidence drawer everywhere, server-side citations), tenant isolation (11/11 probes), honesty (non-goals/caveats verbatim in README) |
+| 00 Rubric gates | ✅ | Re-affirmed: determinism (byte-stable seed + goldens), explainability (evidence drawer everywhere, server-side citations), tenant isolation (11/11 probes), honesty (non-goals/caveats verbatim in README); WCAG 2.2 AA via the §19 gates; desktop+tablet perf via §20 budgets |
+| 01 Master loop | ✅ | Spec-authoring protocol (meta, no code obligations); its product — per-section alternatives/tradeoffs/acceptance — is what the §27.6 audit checks |
 | 02 Product scope | ✅ | All M-priority features built; S-priority behind default-off flags; no X-priority code exists |
 | 03 UX & states | ✅ | §03.5 states per screen (kitchen sink renders them; axe-audited); deep-link preservation E2E-tested |
 | 04 Design system | ✅ | Token-only styling (arch-grep bans arbitraries/hex); icon registry lint; kitchen sink §04.13 |
@@ -158,6 +159,7 @@ can be without them. Failures: none.
 | 23 DevOps | ✅ | CI stages match §23.5 names; nightly (eval/audit/synthetic/backup) exists. ⚙️ Vercel preview legs + prod migrate-then-promote need a Vercel project; backup artifacts need secrets |
 | 24 Monitoring | ✅ | §24.2 logger + redaction test; no-console lint; health 200/503 envelopes tested; Sentry seam scrub tested. ⚙️ live alert rules + uptime check need DSN/prod URL |
 | 25 Release | ✅ | PR template §25.2; flag-age lint in CI; CHANGELOG + v1.0.0-mvp tag; launch checklist with §25.4 items; §25.7 status in README |
+| 26 Roadmap | ✅ | No roadmap item built pre-gate (§26.1 rule); every seam it names (ImportAdapter, PricingSource, CostBasisMethod, channel interface, can(objectId?), queryOptions) exists dormant in the code |
 
 ## Deviations log (27.6 final report input)
 
