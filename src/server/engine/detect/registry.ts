@@ -163,31 +163,33 @@ function runD2(input: DetectorInput, params: D2Params): Finding[] {
       e.ids.push(t.id);
       monthly.set(ym, e);
     }
-    // trailing 6 FULL months before the current month
+    // Evaluate every FULL month against its own trailing-6 baseline —
+    // detectors are idempotent over all data, so historical spikes surface
+    // regardless of when the run happens (§07.6 idempotency rule).
     const months = [...monthly.keys()].filter((ym) => ym < currentMonth).sort();
-    const baselineMonths = months.slice(-7, -0); // candidates
-    const evalMonth = baselineMonths.at(-1);
-    if (!evalMonth) continue;
-    const trailing = baselineMonths.slice(0, -1).slice(-6);
-    if (trailing.length < params.minMonths) continue; // §14.3 D2: abstain
-    const values = trailing.map((ym) => monthly.get(ym)!.total);
-    const mean = values.reduce((a, b) => a + b, 0) / values.length;
-    const variance =
-      values.reduce((a, b) => a + (b - mean) ** 2, 0) / values.length;
-    const sd = Math.sqrt(variance);
-    const evalTotal = monthly.get(evalMonth)!.total;
-    if (evalTotal > mean + params.sigma * sd && evalTotal > mean) {
-      const severe = evalTotal > mean + 3 * sd || evalTotal > 250;
-      const ids = monthly.get(evalMonth)!.ids;
-      const { ids: capped, overflow } = capEvidence(ids);
-      findings.push({
-        detectorKey: "fee_spike",
-        severity: severe ? "high" : "medium",
-        title: `Fee spike: $${evalTotal.toFixed(2)} in ${evalMonth} vs ~$${mean.toFixed(2)}/mo baseline`,
-        evidenceTxIds: capped,
-        evidenceHash: evidenceHashOf("fee_spike", ids, { ...params, accountId, month: evalMonth }),
-        explainInput: { accountId, month: evalMonth, total: evalTotal.toFixed(2), mean: mean.toFixed(2), sd: sd.toFixed(2), overflow },
-      });
+    for (let i = 0; i < months.length; i++) {
+      const evalMonth = months[i]!;
+      const trailing = months.slice(Math.max(0, i - 6), i);
+      if (trailing.length < params.minMonths) continue; // §14.3 D2: abstain
+      const values = trailing.map((ym) => monthly.get(ym)!.total);
+      const mean = values.reduce((a, b) => a + b, 0) / values.length;
+      const variance =
+        values.reduce((a, b) => a + (b - mean) ** 2, 0) / values.length;
+      const sd = Math.sqrt(variance);
+      const evalTotal = monthly.get(evalMonth)!.total;
+      if (evalTotal > mean + params.sigma * sd && evalTotal > mean) {
+        const severe = evalTotal > mean + 3 * sd || evalTotal > 250;
+        const ids = monthly.get(evalMonth)!.ids;
+        const { ids: capped, overflow } = capEvidence(ids);
+        findings.push({
+          detectorKey: "fee_spike",
+          severity: severe ? "high" : "medium",
+          title: `Fee spike: $${evalTotal.toFixed(2)} in ${evalMonth} vs ~$${mean.toFixed(2)}/mo baseline`,
+          evidenceTxIds: capped,
+          evidenceHash: evidenceHashOf("fee_spike", ids, { ...params, accountId, month: evalMonth }),
+          explainInput: { accountId, month: evalMonth, total: evalTotal.toFixed(2), mean: mean.toFixed(2), sd: sd.toFixed(2), overflow },
+        });
+      }
     }
   }
   return findings;

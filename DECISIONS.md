@@ -61,3 +61,7 @@ Format per entry: date · question · options considered · choice · affected s
 **2026-07-30 · Arch-grep scope.** The M0 arbitrary-value grep flagged sizing utilities (max-w-[1440px] — itself the §03.4 shell spec) beyond §04.13's "color/spacing" ban. Narrowed to color/spacing arbitraries; the §04.3.3 type scale is respected (text-[10px] instances replaced with scale values). Affected: 04.13, 04.3.4.
 
 **2026-07-30 · E2E runs against a production build.** Dev-server on-demand compilation caused flaky timeouts; §23.5's E2E stage targets a deployed (production) build anyway. playwright webServer = next build && next start. Affected: 22, 23.5.
+
+**2026-07-30 · D2 evaluates historical months.** §14.3 D2 defines the spike test for "a month" vs its trailing baseline; evaluating only the latest full month would miss the §15.7 planted spike (3 months back) whenever detectors run later — contradicting §07.6's "every job computes from ledger state" idempotency. D2 now tests every full month against its own trailing-6 baseline. Affected: 14.3, 07.6.
+
+**2026-07-30 · Demo dataset v1.1.0.** The D4 walk (78→89%) evaluated retrospectively sat inside its own trailing-90d median. Added a steep finale (two large equity buys in the last week) so the drift exceeds 5pp at the seed date; version bumped per §15.7's baseline-invalidation rule. Affected: 15.7.

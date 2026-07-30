@@ -13,7 +13,7 @@
  *  D6 checking account silent for 60 days
  */
 
-export const DEMO_DATASET_VERSION = "1.0.0";
+export const DEMO_DATASET_VERSION = "1.1.0";
 export const DEMO_SEED_DATE = "2026-07-01"; // fixed — never now()
 
 function mulberry32(seed) {
@@ -157,6 +157,12 @@ export function generateDemoDataset() {
       buyEtf("AAPL", 2000, 12);
       buyEtf("MSFT", 1800, 18);
       buyEtf("META", 1200, 24);
+      // D4 finale: the walk steepens at the end so the drift exceeds the
+      // trailing-90-day median even when evaluated retrospectively.
+      if (mi === months.length - 1) {
+        buyEtf("NVDA", 16000, 26);
+        buyEtf("MSFT", 9000, 27);
+      }
     } else {
       buyEtf("VTI", 1200, 6);
       buyEtf("VXUS", 700, 6);

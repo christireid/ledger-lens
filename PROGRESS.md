@@ -94,11 +94,11 @@ Spec inputs: 03, 04, 05 (S-01…S-13), 06.5–11. Verify: Playwright E2E US-01�
 ### M7 — Detection & alerts
 Spec inputs: 14, 05.6/05.8. Verify: detector fixtures (planted findings all fire on demo data); dedup double-run test; preview-parity test.
 
-- [ ] Detector registry (D1–D6)
-- [ ] Alert rules
-- [ ] Notifications
-- [ ] Preview parity
-- [ ] Verify gate green
+- [x] Detector registry (D1–D6 — built in M5, verified here: 17 unit fixtures incl. D2 cold-start + D4 pre-baseline abstention, trigram similarity, param rejection, evidence-hash stability; D2 fixed to evaluate every full month vs its own trailing baseline)
+- [x] Alert rules (user rules run through the identical registry with user params; §14.5-3 per-detector failure isolation verified)
+- [x] Notifications (§14.4: rule dedup = ruleId+evidenceHash unique; high-severity anomalies notify with anomaly: dedup keys; trigger_count/last_triggered_at maintained)
+- [x] Preview parity (§05.8: preview count == direct registry run over the same 90d window, asserted)
+- [x] Verify gate green — all six §15.7 planted findings fire on demo data (D1 FITLIFE pair, D2 fee spike, D3 $18.5k wire, D4 drift w/ steepened finale (dataset v1.1.0), D5 TSLA oversell, D6 quiet checking via user rule); dedup double-run inserts zero rows; integration 40/40, E2E 9/9, verify:all green (2026-07-30)
 
 ### M8 — AI investigation
 Spec inputs: 08, 17.3, 05.7. Verify: `pnpm eval` (mocked transport green); US-06 E2E with mock; one real-API smoke if key present.
