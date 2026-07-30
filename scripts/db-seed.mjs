@@ -1,3 +1,9 @@
 #!/usr/bin/env node
-console.error("scripts/db-seed.mjs: not implemented yet — this lands with its owning milestone (see PROGRESS.md). Failing loudly rather than pretending success (§27.2e).");
-process.exit(1);
+// Demo seed entrypoint (§23.3) — delegates to the seed runner shell.
+import { spawnSync } from "node:child_process";
+
+const result = spawnSync("node", ["supabase/seed/run.mjs"], {
+  stdio: "inherit",
+  env: process.env,
+});
+process.exit(result.status ?? 1);

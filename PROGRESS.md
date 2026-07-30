@@ -35,12 +35,12 @@ Spec inputs: 06.2–3, 06.12, 07.9, 23. Verify: `pnpm typecheck && pnpm lint && 
 ### M1 — Schema & data layer
 Spec inputs: 09 (all), 16, 07.3. Verify: `pnpm db:migrate && pnpm test:unit` (marshal round-trip, enum parity, DDL snapshot).
 
-- [ ] Drizzle schema + migrations
-- [ ] RLS policies
-- [ ] Marshal layer
-- [ ] Enum-parity test
-- [ ] Seed runner shell
-- [ ] Verify gate green
+- [x] Drizzle schema + migrations (all 13 tables per §09.3 incl. checks, §09.5 indexes; 0000 generated + 0001 custom: extensions, supersedes FK, updated_at triggers, expression uniques, auth.jwt() stub, app_user role + column-level grants)
+- [x] RLS policies (all workspace-scoped tables + instruments read/insert-all; verified manually via psql two-user probe: cross-tenant reads return zero rows; UPDATE amount denied, UPDATE superseded allowed)
+- [x] Marshal layer (server/db/marshal.ts — only numeric-string ↔ bigint boundary; wire emits decimal strings)
+- [x] Enum-parity test (TS §16 sets == drizzle pgEnums == migration SQL CREATE TYPEs) + DDL drift gate + §02.4 concept-name checklist + money/qty property tests
+- [x] Seed runner shell (supabase/seed/run.mjs frame; deterministic generator lands in M4 per §27.4, fails loudly until then)
+- [x] Verify gate green — `pnpm db:migrate && pnpm test:unit` (13 tests) + cumulative `pnpm verify:all` (2026-07-30; local Postgres 16 with unaccent/btree_gin standing in for Supabase)
 
 ### M2 — Auth & workspace
 Spec inputs: 10, 11, 05.3. Verify: route-matrix test, bootstrap race test, cross-tenant probe suite.
