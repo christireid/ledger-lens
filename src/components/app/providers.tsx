@@ -1,6 +1,7 @@
 "use client";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { LazyMotion } from "framer-motion";
 import { ThemeProvider } from "next-themes";
 import * as React from "react";
 
@@ -44,6 +45,9 @@ function getQueryClient() {
   return browserQueryClient;
 }
 
+const loadMotionFeatures = () =>
+  import("framer-motion").then((mod) => mod.domAnimation);
+
 export function Providers({
   children,
   nonce,
@@ -56,7 +60,11 @@ export function Providers({
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem {...(nonce ? { nonce } : {})}>
       <QueryClientProvider client={queryClient}>
-        <TooltipProvider delayDuration={300}>{children}</TooltipProvider>
+        {/* §20.3: motion features load lazily off the critical path — m.*
+            components stay tiny in the route bundles. */}
+        <LazyMotion features={loadMotionFeatures} strict>
+          <TooltipProvider delayDuration={300}>{children}</TooltipProvider>
+        </LazyMotion>
         <Toaster />
       </QueryClientProvider>
     </ThemeProvider>

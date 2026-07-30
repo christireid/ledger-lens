@@ -3,7 +3,7 @@
 import Link from "next/link";
 import * as React from "react";
 import { keepPreviousData, useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { z } from "zod";
 
 import { EmptyState } from "@/components/app/empty-state";
@@ -329,7 +329,7 @@ export function LedgerClient() {
                     <TableRow className="bg-muted/30">
                       <TableCell colSpan={7}>
                         {/* §03.8.2 row expansion: height/opacity ease-in, honoring reduced motion. */}
-                        <motion.div
+                        <m.div
                           initial={motionSafe ? { opacity: 0, height: 0 } : false}
                           animate={{ opacity: 1, height: "auto" }}
                           transition={{ duration: MOTION.duration.base, ease: MOTION.ease.standard }}
@@ -354,7 +354,7 @@ export function LedgerClient() {
                             <p className="font-medium text-muted-foreground">Full description</p>
                             <p className="break-words">{tx.description || "—"}</p>
                           </div>
-                        </motion.div>
+                        </m.div>
                       </TableCell>
                     </TableRow>
                   )}

@@ -40,7 +40,7 @@ figure is grounded in a cited database query.
 | **📥 Import pipeline** — column auto-mapping, dry-run preview, a three-layer duplicate policy, idempotent commits, and a downloadable rejects CSV. Hardened against oversize files, encoding hostility, and spreadsheet formula injection (40-file adversarial corpus in CI). | <img src="docs/media/import-mapping.png" alt="CSV import mapping step" width="420" /> |
 | **📒 Immutable ledger** — transactions are never mutated (enforced by Postgres column-level grants, not convention); corrections supersede. Full-text search, URL-held filters, keyboard-driven row expansion. | <img src="docs/media/ledger.png" alt="Ledger with filters and full-text search" width="420" /> |
 | **⚠️ Detection** — six detectors (duplicate charges, fee spikes, price outliers, allocation drift, dormancy wakes, missing-history gaps) with evidence-hash dedup so re-runs never re-alert. The demo seed plants one finding per detector, and CI asserts each one fires. | <img src="docs/media/anomalies.png" alt="Anomaly queue with severity badges and evidence chips" width="420" /> |
-| **🤖 AI investigator** — six read-only tools, an SSE tool-calling loop, server-side citations, a circuit breaker, and a 29-case eval suite (grounding, refusal, prompt-injection). The model narrates; **the database answers**. | <img src="docs/media/investigation.png" alt="Investigation thread with cited answer" width="420" /> |
+| **🤖 AI investigator** — six read-only tools, an SSE tool-calling loop, server-side citations, a circuit breaker, and a 30-case eval suite (grounding, refusal, prompt-injection). The model narrates; **the database answers**. | <img src="docs/media/investigation.png" alt="Investigation thread with cited answer" width="420" /> |
 
 <div align="center">
 <img src="docs/media/marketing-light.png" alt="Marketing page, light theme" width="440" />
@@ -110,7 +110,7 @@ The load-bearing decisions, and why:
 | Auth | Clerk (keyless-aware) | Session verification in middleware; webhooks Svix-verified |
 | AI | Transport seam: deterministic mock ⇄ OpenAI | The entire pipeline — tools, citations, refusals, evals — runs and CI-gates without an API key |
 | Styling | Tailwind + CSS-variable tokens, shadcn-style vendored primitives | Owned code over black-box deps; kitchen-sink page renders every state |
-| Testing | Vitest (unit/property/integration/contract/eval) + Playwright (journeys/axe/headers/hydration) | ~200 tests across seven suites, all blocking |
+| Testing | Vitest (unit/property/integration/contract/eval) + Playwright (journeys/axe/keyboard/headers/perf/hydration) | 320+ tests across eight suites, all blocking |
 
 ## Verification is the feature
 
@@ -131,15 +131,19 @@ Measured on this build (committed in [`evidence/`](evidence/)):
 | Dashboard LCP | < 2.5 s | **0.76 s** (median of 3) |
 | CLS | < 0.02 | **0.001** |
 | Performance score | ≥ 90 | **92–100** per route |
-| First-load JS `/` | ≤ 130 KB gz | **103.7 KB** (80%) |
-| First-load JS `/app/ledger` | ≤ 200 KB gz | **174.6 KB** (87%) |
+| First-load JS `/` | ≤ 130 KB gz | **103.8 KB** (80%) |
+| First-load JS `/app/ledger` | ≤ 200 KB gz | **191.6 KB** (96%) |
+| Shared baseline JS | ≤ 110 KB gz | **100.3 KB** |
+| Ledger filter round-trip @ 50k rows | < 500 ms p95 | **452 ms** (net of fixed 300 ms debounce) |
+| Snapshot recompute @ 50k rows | < 20 s | **~13 s** (366-day backfill) |
+| Statement timeout | 5 s enforced | **pg_sleep(6) killed** |
 | axe serious/critical | 0 across 10 screens | **0** |
 | Cross-tenant probes | all denied | **11/11** |
 
 Some things that make this build unusual:
 
 - **Contract tests are generated** from the same endpoint inventory that
-  produces the OpenAPI doc at [`/api/docs`](src/app/api/docs) — 73 assertions
+  produces the OpenAPI doc at [`/api/docs`](src/app/api/docs) — 90 assertions
   that every route's envelope, status codes, and auth behavior match the spec.
 - **A strict CSP that provably doesn't break the app.** Per-request nonce +
   `strict-dynamic`, no `unsafe-inline` in `script-src` — and a Playwright spec

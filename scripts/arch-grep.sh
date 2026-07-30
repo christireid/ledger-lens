@@ -55,3 +55,10 @@ if [[ $fail -ne 0 ]]; then
   exit 1
 fi
 echo "Architecture grep audits passed."
+
+# §22.7-1: no direct OpenAI access outside the transport gateway (§07.8).
+if grep -rn "api.openai.com" src --include="*.ts" --include="*.tsx" | grep -v "server/ai/transport.ts" | grep -q .; then
+  echo "arch-grep FAIL: OpenAI reachable outside src/server/ai/transport.ts (§07.8)"
+  grep -rn "api.openai.com" src --include="*.ts" --include="*.tsx" | grep -v "server/ai/transport.ts"
+  exit 1
+fi

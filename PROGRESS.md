@@ -153,13 +153,28 @@ can be without them. Failures: none.
 | 17 API contract | ✅ | 73 generated contract tests; OpenAPI at /api/docs from the same inventory; SSE event shapes tested |
 | 18 Errors | ✅ | Closed ErrorCode enum; §18.3 sanitization tests; digest/requestId reference path unit-tested |
 | 19 Accessibility | ✅ | axe zero serious/critical across 10 screens (evidence/axe-summary.json); keyboard paths in journeys E2E. ⚙️ screen-reader walkthroughs are manual §25.4 gates |
-| 20 Performance | ✅ | All budgets measured under ceiling (README table; evidence/); LHCI assertions §20.8 pass; EXPLAIN baselines checked in |
-| 21 Security | ✅ | §21.4 CSP verbatim + §21.12 header spec (incl. no-unsafe-inline + zero-violation check); upload hardening corpus; secrets inventory = §23.4 (unit test) |
+| 20 Performance | ✅ | All budgets measured under ceiling (README table; evidence/); LHCI §20.8 pass; EXPLAIN gate live w/ committed baselines (scripts/explain-baselines.json); statement-timeout + 50k-recompute + ledger-filter-p95 + chart-payload gates all pass. Deviations logged: virtualization + RSC prefetch deferred (DECISIONS.md) |
+| 21 Security | ✅ | §21.4 CSP verbatim + §21.12 header spec (incl. zero-violation check); upload hardening (pre-check, slug, export formula neutralization); timing-safe cron 404; dual rate keys + Postgres fail-closed AI caps; secrets-inventory unit test (env.inventory.test.ts) |
 | 22 Testing strategy | ✅ | All seven suites blocking and green: unit/property/integration/contract/E2E/a11y/eval |
 | 23 DevOps | ✅ | CI stages match §23.5 names; nightly (eval/audit/synthetic/backup) exists. ⚙️ Vercel preview legs + prod migrate-then-promote need a Vercel project; backup artifacts need secrets |
 | 24 Monitoring | ✅ | §24.2 logger + redaction test; no-console lint; health 200/503 envelopes tested; Sentry seam scrub tested. ⚙️ live alert rules + uptime check need DSN/prod URL |
 | 25 Release | ✅ | PR template §25.2; flag-age lint in CI; CHANGELOG + v1.0.0-mvp tag; launch checklist with §25.4 items; §25.7 status in README |
 | 26 Roadmap | ✅ | No roadmap item built pre-gate (§26.1 rule); every seam it names (ImportAdapter, PricingSource, CostBasisMethod, channel interface, can(objectId?), queryOptions) exists dormant in the code |
+
+## Full-doc audit reconciliation (2026-07-30)
+
+After the complete spec re-read, a 4-agent adversarial audit produced 133
+findings. Disposition: the large majority are FIXED in the `full-spec audit
+fixes` commit series (security §21, AI §08 caps/abort/mini-model seams,
+engine §12 base currency + prefix replay, metrics §13 signed fees/gaps/
+allocation inputs, detection §14 D2/D4/D5 semantics, imports §15 dupe
+scoping/failed states/suggest tier, contracts §16–18 note/msg_/docs-gate/
+boundaries/dispatch/ErrorCode sweep, a11y §19 patterns + keyboard walkthrough
++ extra axe passes, perf §20 gates, monitoring §24 emitters + health, F13
+demo path, §05 dashboard zones + screen affordances). The residual accepted
+gaps are each logged with rationale in DECISIONS.md (virtualization, RSC
+prefetch, coverage-floor levels, sparkline/bar chart, EU-locale toggle,
+wizard resume, wall-time lint) — deferred visibly, not silently.
 
 ## Deviations log (27.6 final report input)
 

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 
 import { EmptyState } from "@/components/app/empty-state";
 import { EvidenceDrawer, type EvidenceDescriptor } from "@/components/app/evidence-drawer";
@@ -351,7 +351,7 @@ function StatCard({
           <CardTitle>{label}</CardTitle>
         </CardHeader>
         <CardContent>
-          <motion.div
+          <m.div
             key={value ?? "none"}
             className="text-3xl font-semibold"
             initial={motionSafe ? { opacity: 0.4, y: 4 } : false}
@@ -359,7 +359,7 @@ function StatCard({
             transition={{ duration: MOTION.duration.base, ease: MOTION.ease.standard }}
           >
             <MoneyText value={value} showDirection={directional} compact={Math.abs(Number(value ?? 0)) >= 10_000_000} />
-          </motion.div>
+          </m.div>
           {delta != null && (
             <p className="mt-1 text-xs text-muted-foreground">
               <MoneyText value={delta} showDirection /> excl. contributions

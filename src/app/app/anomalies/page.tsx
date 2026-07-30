@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, m } from "framer-motion";
 import { toast } from "sonner";
 
 import { MOTION } from "@/lib/constants/motion";
@@ -182,7 +182,7 @@ export default function AnomaliesPage() {
         <div className="space-y-3" data-testid="anomaly-list">
           <AnimatePresence initial={false}>
           {anomalies.map((a) => (
-            <motion.div
+            <m.div
               key={a.id}
               layout={motionSafe}
               exit={
@@ -258,7 +258,7 @@ export default function AnomaliesPage() {
                 )}
               </CardContent>
             </Card>
-            </motion.div>
+            </m.div>
           ))}
           </AnimatePresence>
         </div>
