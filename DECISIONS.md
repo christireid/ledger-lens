@@ -45,3 +45,11 @@ Format per entry: date · question · options considered · choice · affected s
 **2026-07-30 · Demo seed date fixed at 2026-07-01.** §15.7 says "24 months ending at seed date"; byte-stability (§23.10-5) forbids now(). Chose the constant DEMO_SEED_DATE='2026-07-01'; planted-finding recency (D1 pair, D6 silence) is anchored to it. Regenerating with a newer anchor is a deliberate golden-refresh per §25.6. Affected: 15.7, 23.10.
 
 **2026-07-30 · Generator as plain .mjs.** The demo generator lives at supabase/seed/demo-dataset.mjs (plain JS + .d.ts) so the Node seed runner (no TS loader) and the app/tests can share one deterministic implementation. Affected: 15.7, 23.2.
+
+**2026-07-30 · ErrorCode closure across 17.4+18.2.** §18.2's table omits codes that §17.4/§17.5/§11.4 name (403 forbidden, 400 invalid_cursor, 409 stale_state). The closed enum is the union of both sections — lower-numbered 17 wins on the code list; 18's subclass mapping extended accordingly. Affected: 17.4, 18.2.
+
+**2026-07-30 · Raw upload persisted on the batch.** §17.2's validate/commit rows take no file body, so the upload must be retrievable server-side across wizard steps. Options: Supabase Storage (unavailable on the local stack) or an additive raw_content column (base64, bounded by the 10 MB cap). Chose the column; the §15.6 >10k-rows storage-object seam remains for later. Affected: 15.5, 09.3.
+
+**2026-07-30 · Detector registry built in M5.** §27.4 lists the registry as an M7 output, but M5's alerts endpoints require §14.2 paramsSchemas and the preview endpoint requires run(). Built the full registry (D1–D6) in M5; M7 still owns its verification battery (fixtures on demo data, dedup double-run, preview parity, abstention tests). Gates unaffected — they are cumulative. Affected: 14.2, 27.4.
+
+**2026-07-30 · Test-session auth for contract/E2E.** With Clerk keys absent, contract tests and E2E need a session mechanism. §20.8/§23.4 define DEMO_E2E_SECRET (preview-only, asserted absent in prod). withApi accepts x-demo-e2e-secret + x-demo-user-id when the env var is set — the same mechanism the spec prescribes for preview E2E. Affected: 20.8, 23.4, 10.3.

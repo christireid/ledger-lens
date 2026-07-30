@@ -75,12 +75,12 @@ Spec inputs: 15, 05.9 API side, 17 import rows. Verify: 40-file adversarial corp
 ### M5 — API surface
 Spec inputs: 17 (all), 18, 07.4–7. Verify: contract tests (all rows × valid/boundary/invalid); route-walk parity test.
 
-- [ ] withApi wrapper
-- [ ] Every endpoint row
-- [ ] Error taxonomy
-- [ ] Rate limits
-- [ ] OpenAPI at /api/docs
-- [ ] Verify gate green
+- [x] withApi wrapper (§07.4: auth via Clerk or §20.8 test-session, workspace resolution inside RLS tx, Zod body/query parse, rate limits, §18.3 catch path, requestId+timing, envelope helpers)
+- [x] Every endpoint row (§17.2 complete: dashboard, transactions+supersede, accounts+archive, series, anomalies+bulk, alerts CRUD+preview, notifications, investigations, feedback, imports full wizard API, workspace+demo, webhook, cron/nightly, health, docs; public-ID mapping at the wire layer only; nightly job w/ per-workspace recompute + detector evaluation; detector registry D1–D6 pulled forward from M7 because §14.2 paramsSchemas feed the alert endpoints)
+- [x] Error taxonomy (§18.2 closed ErrorCode enum + AppError subclasses; 23505→duplicate_* in services; no-internals-in-500s secret-marker test)
+- [x] Rate limits (§07.7 scopes, Upstash REST sliding window, fail-open w/ logged warning)
+- [x] OpenAPI at /api/docs (zod-to-openapi v7 from the same request schemas; inventory-driven)
+- [x] Verify gate green — contract tests all rows × valid/unauth/unknown-field/malformed (73); route-walk parity both directions + withApi-wrap gate; cumulative verify:all 131 unit / 30 integration / build (2026-07-30). NOTE: POST /investigations/:id/messages contractually 503 until M8 wires the gateway (logged deviation, flips in M8)
 
 ### M6 — App shell & screens
 Spec inputs: 03, 04, 05 (S-01…S-13), 06.5–11. Verify: Playwright E2E US-01…US-05, US-07; hydration gate; kitchen-sink screenshots.

@@ -27,7 +27,9 @@
     "verify:all": "pnpm typecheck && pnpm lint && pnpm test && pnpm build"
   },
   "dependencies": {
+    "@asteasolutions/zod-to-openapi": "^7.3.4",
     "@clerk/nextjs": "^7.6.3",
+    "@vercel/functions": "^3.7.6",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.45.2",

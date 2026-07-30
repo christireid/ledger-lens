@@ -103,6 +103,9 @@ export const importBatches = pgTable(
     contentHash: text("content_hash").notNull(), // SHA-256
     status: batchStatus("status").notNull().default("draft"),
     mapping: jsonb("mapping"), // column-map profile, Zod-validated shape from §15
+    // Raw upload persisted for the wizard's validate/commit steps (§17.2 takes
+    // no file body after upload) — base64, ≤10 MB cap. DECISIONS.md 2026-07-30.
+    rawContent: text("raw_content"),
     stats: jsonb("stats"), // accepted/rejected/dup counts
     idempotencyKey: uuid("idempotency_key").unique(), // §07.11-2
     rejectedRows: jsonb("rejected_rows"), // ≤10k rows; beyond cap → storage object ref (§15)

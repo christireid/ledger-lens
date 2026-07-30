@@ -276,7 +276,6 @@ export function validateRows(
 
     // 6. description: trimmed, control chars stripped, ≤500 (truncate, don't reject)
     let description = col(raw, "description")
-      // eslint-disable-next-line no-control-regex -- §15.4-6: strip control chars
       .replace(/[\x00-\x1f\x7f]/g, "")
       .trim();
     if (description.length > 500) description = `${description.slice(0, 499)}…`;
