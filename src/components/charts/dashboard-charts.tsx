@@ -79,8 +79,9 @@ export function ValueAreaChart({
   const summary = `Portfolio value from ${priced[0]!.asOf} to ${priced.at(-1)!.asOf}, low ${low.toLocaleString("en-US", { style: "currency", currency: "USD" })}, high ${high.toLocaleString("en-US", { style: "currency", currency: "USD" })}, ending ${priced.at(-1)!.value.toLocaleString("en-US", { style: "currency", currency: "USD" })}.`;
 
   return (
-    <figure role="img" aria-label={summary}>
-      <div className="h-64 w-full">
+    <figure>
+      {/* §19.3: the drawn chart is a single image to AT; the data lives in the table below. */}
+      <div className="h-64 w-full" role="img" aria-label={summary}>
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={points} margin={{ top: 8, right: 8, bottom: 0, left: 8 }}>
             <XAxis
@@ -170,8 +171,8 @@ export function AllocationDonut({
     .join(", ")}.`;
 
   return (
-    <figure role="img" aria-label={summary}>
-      <div className="h-56 w-full">
+    <figure>
+      <div className="h-56 w-full" role="img" aria-label={summary}>
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Tooltip content={<SharedTooltip />} />

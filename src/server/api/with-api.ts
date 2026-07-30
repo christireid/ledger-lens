@@ -206,7 +206,10 @@ export function withApi<
       // Workspace resolution (§10.4) inside the RLS transaction (§10.5).
       const uid = userId;
       res = await withRls(uid, async (db) => {
-        const resolved = await resolveWorkspace(db, uid);
+        // §02.5 F13/§07.6: demo intent from the sign-up flow — inline seed on
+        // first bootstrap (synchronous, within the §07.6 3 s budget).
+        const demoIntent = /(?:^|;\s*)demo_intent=1/.test(req.headers.get("cookie") ?? "");
+        const resolved = await resolveWorkspace(db, uid, { demoIntent });
         // §24.2 Ctx.logger — structured lines; "note" carries the fixed
         // developer-authored message (meta values still pass redaction).
         const svcLog = (level: "info" | "warn" | "error") =>
@@ -226,6 +229,10 @@ export function withApi<
           db,
           logger: { info: svcLog("info"), warn: svcLog("warn"), error: svcLog("error") },
         });
+        if (resolved.bootstrapped && resolved.isDemo) {
+          const { demoAction } = await import("@/server/services/workspace-admin");
+          await demoAction(ctx, db, "seed");
+        }
         return handler({
           ctx,
           db,

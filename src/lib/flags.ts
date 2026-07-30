@@ -10,8 +10,10 @@ export const flags = {
   f11: false,
   /** F12 — S-priority, dark until M0–M9 complete */
   f12: false,
-  /** F13 — demo seed dataset surfaces (§15.7) */
-  f13: false,
+  /** F13 demo mode is M-priority (§02.5) — always on, consumed by the
+   *  sign-up demo-intent path (§07.6) and the Settings demo actions. */
+  f13: true, // flag-on: 2026-07-30
+
   /** F14 — S-priority, dark until M0–M9 complete */
   f14: false,
 } as const;

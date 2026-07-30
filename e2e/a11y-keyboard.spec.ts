@@ -43,13 +43,15 @@ test("keyboard-only walkthrough (§03.12/§19.4-2)", async ({ page, context }) =
   // account select (Radix) — fully keyboard operable
   await page.getByTestId("account-select").focus();
   await page.keyboard.press("Enter");
+  await page.getByRole("option").first().waitFor();
   await page.keyboard.press("ArrowDown");
   await page.keyboard.press("Enter");
+  await expect(page.getByTestId("commit-button")).toBeEnabled();
   await page.getByTestId("commit-button").focus();
   await page.keyboard.press("Enter");
-  await expect(page.getByText(/imported|committed|accepted/i).first()).toBeVisible({
-    timeout: 30_000,
-  });
+  // Commit lands on the batch detail (§05.9).
+  await expect(page).toHaveURL(/\/app\/imports\/batch_/, { timeout: 30_000 });
+  await expect(page.getByTestId("stat-accepted")).toBeVisible();
 
   // 2. Filter the ledger by typing into the focused search box.
   await page.goto("/app/ledger");

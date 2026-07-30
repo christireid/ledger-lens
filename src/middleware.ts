@@ -78,6 +78,9 @@ function keyless(req: NextRequest) {
  */
 function securedNext(req: NextRequest): NextResponse {
   if (req.nextUrl.pathname.startsWith("/api/")) return NextResponse.next();
+  // §02.5 F13/§07.6: ?demo=1 (marketing "Try the demo" → sign-up) survives the
+  // auth round-trip as a short-lived cookie; bootstrap consumes it.
+  const wantsDemo = req.nextUrl.searchParams.get("demo") === "1";
   const nonce = Buffer.from(crypto.getRandomValues(new Uint8Array(16))).toString("base64");
   const clerkApi = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
     ? " https://*.clerk.accounts.dev https://clerk.com"
@@ -103,6 +106,9 @@ function securedNext(req: NextRequest): NextResponse {
   requestHeaders.set("content-security-policy", csp);
   const res = NextResponse.next({ request: { headers: requestHeaders } });
   res.headers.set("Content-Security-Policy", csp);
+  if (wantsDemo) {
+    res.cookies.set("demo_intent", "1", { maxAge: 3600, sameSite: "lax", path: "/" });
+  }
   return res;
 }
 
