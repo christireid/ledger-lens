@@ -281,7 +281,9 @@ export function LedgerClient() {
                     onKeyDown={(e) => {
                       if (e.key === "Enter") setExpanded(expanded === tx.id ? null : tx.id);
                     }}
-                    aria-expanded={expanded === tx.id}
+                    // aria-expanded is not valid on role=row outside a treegrid
+                    // (§19 axe gate); the revealed detail row conveys the state.
+                    data-expanded={expanded === tx.id || undefined}
                   >
                     <TableCell className="whitespace-nowrap font-mono text-xs">{tx.date}</TableCell>
                     <TableCell>

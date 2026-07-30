@@ -1,6 +1,7 @@
 import { ClerkProvider } from "@clerk/nextjs";
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
+import { headers } from "next/headers";
 
 import { clientEnv } from "@/lib/env.client";
 
@@ -29,9 +30,12 @@ export const metadata: Metadata = {
     "Turn a pile of financial exports into an explainable, queryable, alert-driven picture of what actually happened to your money.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  // §21.4 — reading headers() opts every HTML route into dynamic rendering,
+  // which is what lets Next stamp the per-request CSP nonce onto its scripts.
+  await headers();
   const shell = (
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} ${jetbrainsMono.variable} font-sans`}>

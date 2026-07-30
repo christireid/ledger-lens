@@ -8,12 +8,12 @@
     },
     {
       "route": "/app/dashboard",
-      "violations": 1,
+      "violations": 0,
       "serious": 0
     },
     {
       "route": "/app/ledger",
-      "violations": 1,
+      "violations": 0,
       "serious": 0
     },
     {
@@ -33,7 +33,7 @@
     },
     {
       "route": "/app/imports",
-      "violations": 0,
+      "violations": 1,
       "serious": 0
     },
     {

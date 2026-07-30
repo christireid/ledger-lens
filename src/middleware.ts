@@ -51,8 +51,7 @@ function apply(
 
 const withClerk = clerkMiddleware(async (auth, req) => {
   const { userId } = await auth();
-  const res = apply(req, userId !== null) ?? NextResponse.next();
-  return withSecurityHeaders(res, req.nextUrl.pathname);
+  return apply(req, userId !== null) ?? securedNext(req);
 });
 
 function testSessionAuthed(req: NextRequest): boolean {
@@ -67,40 +66,47 @@ function testSessionAuthed(req: NextRequest): boolean {
 }
 
 function keyless(req: NextRequest) {
-  return apply(req, testSessionAuthed(req)) ?? NextResponse.next();
+  return apply(req, testSessionAuthed(req)) ?? securedNext(req);
 }
 
 /**
- * §21.4 CSP — nonce per request for app/auth routes; the marketing page stays
- * static (SSG) with a no-nonce policy set in next.config headers.
+ * §21.4 CSP — nonce generated per request in the middleware. The nonce and
+ * the policy travel on the REQUEST headers so Next.js stamps the nonce onto
+ * every script tag it renders (this requires dynamic rendering — the root
+ * layout reads headers(), which opts every HTML route in); the same policy is
+ * mirrored onto the response. API routes serve JSON and are skipped.
  */
-function withSecurityHeaders(res: NextResponse, pathname: string): NextResponse {
-  if (pathname === "/" || pathname.startsWith("/api/")) return res;
+function securedNext(req: NextRequest): NextResponse {
+  if (req.nextUrl.pathname.startsWith("/api/")) return NextResponse.next();
   const nonce = Buffer.from(crypto.getRandomValues(new Uint8Array(16))).toString("base64");
   const clerkApi = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
-    ? "https://*.clerk.accounts.dev https://clerk.com"
+    ? " https://*.clerk.accounts.dev https://clerk.com"
     : "";
+  // §21.4 verbatim; 'unsafe-eval' is dev-only (webpack HMR), never shipped.
+  const devEval = process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : "";
   const csp = [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' ${clerkApi}`.trim(),
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${devEval}${clerkApi}`,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: https://img.clerk.com",
     "font-src 'self'",
-    `connect-src 'self' ${clerkApi}`.trim(),
+    `connect-src 'self'${clerkApi}`,
+    "frame-src https://challenges.cloudflare.com",
+    "worker-src 'self' blob:",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",
+    "object-src 'none'",
   ].join("; ");
+  const requestHeaders = new Headers(req.headers);
+  requestHeaders.set("x-nonce", nonce);
+  requestHeaders.set("content-security-policy", csp);
+  const res = NextResponse.next({ request: { headers: requestHeaders } });
   res.headers.set("Content-Security-Policy", csp);
-  res.headers.set("x-nonce", nonce);
   return res;
 }
 
-function keylessWithHeaders(req: NextRequest) {
-  return withSecurityHeaders(keyless(req), req.nextUrl.pathname);
-}
-
-export default hasClerkKeys ? withClerk : keylessWithHeaders;
+export default hasClerkKeys ? withClerk : keyless;
 
 export const config = {
   matcher: [

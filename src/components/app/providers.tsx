@@ -37,10 +37,17 @@ function getQueryClient() {
   return browserQueryClient;
 }
 
-export function Providers({ children }: { children: React.ReactNode }) {
+export function Providers({
+  children,
+  nonce,
+}: {
+  children: React.ReactNode;
+  /** §21.4 — per-request CSP nonce for the next-themes inline script. */
+  nonce?: string | undefined;
+}) {
   const queryClient = getQueryClient();
   return (
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem {...(nonce ? { nonce } : {})}>
       <QueryClientProvider client={queryClient}>
         <TooltipProvider delayDuration={300}>{children}</TooltipProvider>
         <Toaster />

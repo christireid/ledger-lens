@@ -13,9 +13,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-export function KitchenSinkClient() {
+export function KitchenSinkClient({ nonce }: { nonce?: string | undefined }) {
   return (
-    <Providers>
+    <Providers nonce={nonce}>
       <main className="mx-auto max-w-4xl space-y-8 p-8" data-testid="kitchen-sink">
         <h1 className="text-2xl font-semibold">Kitchen sink</h1>
 

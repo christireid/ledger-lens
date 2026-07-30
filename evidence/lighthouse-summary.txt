@@ -1,3 +1,3 @@
-/: perf=100 LCP=512ms CLS=0 TBT=0ms (3 runs)
-/app/dashboard: perf=100 LCP=501ms CLS=0 TBT=0ms (3 runs)
-/app/ledger: perf=100 LCP=494ms CLS=0 TBT=0ms (3 runs)
+/: perf=100 LCP=526ms CLS=0 TBT=0ms (3 runs)
+/app/dashboard: perf=92 LCP=763ms CLS=0.001 TBT=216ms (3 runs)
+/app/ledger: perf=100 LCP=810ms CLS=0.001 TBT=0ms (3 runs)
