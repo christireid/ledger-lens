@@ -1,0 +1,12 @@
+{
+  "comment": "First-load gzipped JS ceilings per §20.3 — change only by amending that table.",
+  "sharedBaselineKb": 110,
+  "routes": {
+    "/": 130,
+    "/app/dashboard": 250,
+    "/app/ledger": 200,
+    "/app/anomalies": 210,
+    "/app/imports/new": 220
+  },
+  "warnAtRatio": 0.9
+}

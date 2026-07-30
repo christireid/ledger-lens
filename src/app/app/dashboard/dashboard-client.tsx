@@ -9,11 +9,22 @@ import { EvidenceDrawer, type EvidenceDescriptor } from "@/components/app/eviden
 import { MoneyText } from "@/components/app/money-text";
 import { PageHeader } from "@/components/app/page-header";
 import { SeverityBadge } from "@/components/app/severity-badge";
-import { AllocationDonut, ValueAreaChart } from "@/components/charts/dashboard-charts";
+import dynamic from "next/dynamic";
+
+import { Skeleton } from "@/components/ui/skeleton";
+
+// §20.4: Recharts loads with the route, not the shell — dynamic islands.
+const ValueAreaChart = dynamic(
+  () => import("@/components/charts/dashboard-charts").then((m) => m.ValueAreaChart),
+  { ssr: false, loading: () => <Skeleton className="h-64 w-full" /> },
+);
+const AllocationDonut = dynamic(
+  () => import("@/components/charts/dashboard-charts").then((m) => m.AllocationDonut),
+  { ssr: false, loading: () => <Skeleton className="h-56 w-full" /> },
+);
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { apiFetch } from "@/lib/api/fetch";
 import { qk } from "@/lib/api/keys";
