@@ -33,7 +33,12 @@ const serverSchema = z
     OPENAI_SMOKE: z.enum(["1", "true"]).optional(),
   })
   .superRefine((vars, ctx) => {
-    if (vars.NODE_ENV === "production") {
+    // "Production" for the §23.4 required-set means an actual deploy target
+    // (Vercel prod) or explicit strict mode — `next build` sets
+    // NODE_ENV=production even locally, which is not a deploy.
+    const isDeploy =
+      process.env.VERCEL_ENV === "production" || process.env.ENV_STRICT === "1";
+    if (isDeploy) {
       // §23.4: the typed env module fails the build on any missing required
       // variable in production.
       const required = [

@@ -45,12 +45,12 @@ Spec inputs: 09 (all), 16, 07.3. Verify: `pnpm db:migrate && pnpm test:unit` (ma
 ### M2 — Auth & workspace
 Spec inputs: 10, 11, 05.3. Verify: route-matrix test, bootstrap race test, cross-tenant probe suite.
 
-- [ ] Clerk wiring
-- [ ] Middleware matrix
-- [ ] resolveWorkspace
-- [ ] Ctx + can()
-- [ ] Webhook handler
-- [ ] Verify gate green
+- [x] Clerk wiring (@clerk/nextjs; ClerkProvider gated on key presence — keyless local mode renders §05.3 unavailable card; sign-in/up screens)
+- [x] Middleware matrix (src/middleware.ts consumes lib/routes.ts single config object; anon → redirect w/ redirect_url or typed 401 envelope)
+- [x] resolveWorkspace (lazy bootstrap, §09.9-6 race-safe upsert; withRls db-handle factory owns the JWT/claims bridge per §10.5)
+- [x] Ctx + can() (server/context.ts; §11.2 vocabulary + §11.3 dormant role map)
+- [x] Webhook handler (Svix verification; user.deleted → idempotent cascade delete; user.created advisory)
+- [x] Verify gate green — route-matrix (20 routes × anon/authed), bootstrap race (N=12 → 1 workspace), cross-tenant probe suite (every scoped table, read+write probes), webhook signature tests; `pnpm verify:all` cumulative (2026-07-30). NOTE: live Clerk sign-in untestable without operator keys (HALT item logged; all key-independent paths verified)
 
 ### M3 — Portfolio Engine
 Spec inputs: 12, 13, 16.2 Money/Qty. Verify: golden-file suite + property tests + 50k perf test (`pnpm test:engine`).

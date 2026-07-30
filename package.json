@@ -27,6 +27,7 @@
     "verify:all": "pnpm typecheck && pnpm lint && pnpm test && pnpm build"
   },
   "dependencies": {
+    "@clerk/nextjs": "^7.6.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.45.2",
@@ -35,6 +36,7 @@
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "server-only": "^0.0.1",
+    "svix": "^1.99.1",
     "tailwind-merge": "^3.3.0",
     "zod": "^3.25.0"
   },
