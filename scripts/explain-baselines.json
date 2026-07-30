@@ -1,0 +1,38 @@
+{
+  "ledger-default": [
+    {
+      "node": "Bitmap Index Scan",
+      "index": "transactions_workspace_type_date_idx"
+    }
+  ],
+  "ledger-search": [
+    {
+      "node": "Bitmap Index Scan",
+      "index": "transactions_workspace_description_search_idx"
+    }
+  ],
+  "snapshot-series": [
+    {
+      "node": "Index Scan",
+      "index": "portfolio_snapshots_workspace_as_of_uq"
+    }
+  ],
+  "aggregate-period": [
+    {
+      "node": "Bitmap Index Scan",
+      "index": "transactions_workspace_type_date_idx"
+    }
+  ],
+  "aggregate-fees": [
+    {
+      "node": "Bitmap Index Scan",
+      "index": "transactions_workspace_type_date_idx"
+    }
+  ],
+  "anomaly-queue": [
+    {
+      "node": "Index Scan",
+      "index": "anomalies_workspace_status_severity_idx"
+    }
+  ]
+}

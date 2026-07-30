@@ -114,12 +114,20 @@ export async function recomputeSnapshots(
 
   const pricing = lastTradePricingSource(engineTxs);
   let written = 0;
+  // §20.2 (20s @ 50k rows): replay(asOf) ignores rows dated after asOf, so
+  // feeding each day only the date-sorted prefix up to that day is
+  // semantics-preserving and halves the n×days work of a naive loop.
+  const sorted = [...engineTxs].sort((a, b) =>
+    a.date < b.date ? -1 : a.date > b.date ? 1 : 0,
+  );
+  let prefixEnd = 0;
   for (
     let date = startDate;
     date <= opts.today;
     date = addDays(date, 1)
   ) {
-    const snapshot = computeSnapshot(engineTxs, date, pricing);
+    while (prefixEnd < sorted.length && sorted[prefixEnd]!.date <= date) prefixEnd++;
+    const snapshot = computeSnapshot(sorted.slice(0, prefixEnd), date, pricing);
     const serialized = serializeSnapshot(snapshot);
     const base = snapshot.perCurrency.get(baseCurrency) ?? {
       totalValue: 0n,

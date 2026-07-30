@@ -53,6 +53,10 @@ export async function withRls<T>(
       rawSql`select set_config('request.jwt.claims', ${claims}, true)`,
     );
     await tx.execute(rawSql`set local role app_user`);
+    // §09.5: the 5 s ceiling must hold on THIS session — role-level GUCs only
+    // apply at login as app_user, and the pooled connection logs in as the
+    // service role, so the timeout is pinned per-transaction here.
+    await tx.execute(rawSql`set local statement_timeout = '5s'`);
     return fn(tx);
   });
 }

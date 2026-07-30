@@ -70,6 +70,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm db:migrate
       - run: pnpm test
+      - run: pnpm test:coverage
       - run: pnpm test:contract
 
   integration:
@@ -99,6 +100,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm db:migrate
       - run: pnpm test:integration
+      # §20.5: EXPLAIN plans must match the committed baselines.
+      - run: pnpm explain:baseline
 
   build-budgets:
     name: build + bundle budgets
@@ -146,6 +149,7 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.PREVIEW_DATABASE_URL }}
           DIRECT_URL: ${{ secrets.PREVIEW_DIRECT_URL }}
+          RESET_CONFIRM: "1"
       - id: deploy
         run: |
           url=$(pnpm dlx vercel deploy --token "$VERCEL_TOKEN" --yes)

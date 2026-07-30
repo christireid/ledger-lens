@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { WorkspaceIdSchema, type WorkspaceId } from "@/lib/schemas";
 import { workspaces } from "@/server/db/schema";
 import type { RlsDb } from "@/server/db/rls";
+import { hashUserId, logEvent } from "@/server/obs/logger";
 
 /**
  * Workspace resolution & bootstrap — §10.4. Lazy bootstrap on first
@@ -60,7 +61,15 @@ export async function resolveWorkspace(
 
   const row = after[0];
   if (!row) {
-    // RLS misconfiguration would surface here as zero rows (§10.5 failure mode).
+    // §10.5/§24.5 leak monitor: an authenticated user whose own workspace row
+    // is invisible = the JWT→RLS claim bridge is broken. The failure mode of
+    // defense-in-depth is silence, so the silence is what gets logged.
+    logEvent({
+      level: "warn",
+      event: "rls_zero_rows",
+      userIdHash: hashUserId(clerkUserId),
+      meta: { site: "resolveWorkspace" },
+    });
     throw new Error(
       "workspace bootstrap failed: row invisible after upsert (RLS wiring? §10.5)",
     );

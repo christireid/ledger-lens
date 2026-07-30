@@ -47,8 +47,11 @@ export function scrubEvent(event: SentryEvent): SentryEvent {
 }
 
 function release(): string {
+  // §24.4/§25.3: the date-tag plus git SHA — regressions map to a release.
+  // RELEASE_TAG is stamped by the deploy workflow at tag time; "dev" locally.
+  const tag = process.env.RELEASE_TAG ?? "dev";
   const sha = process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 8) ?? "local";
-  return `ledger-lens@${sha}`;
+  return `ledger-lens@${tag}+${sha}`;
 }
 
 /**

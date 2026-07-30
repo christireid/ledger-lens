@@ -380,6 +380,16 @@ describe("endpoint contract suite (§17.5 — every inventory row)", () => {
     expect(res.status).toBe(404);
   });
 
+  it("chart payload stays under 50KB with ≤ ~400 points (§13.3/§20.2)", async () => {
+    const row = API_INVENTORY.find((r) => r.path === "/snapshots/series")!;
+    const res = await invoke(row, { authed: true, query: "?range=all" });
+    expect(res.status).toBe(200);
+    const text = await res.text();
+    expect(text.length).toBeLessThan(50 * 1024);
+    const body = JSON.parse(text) as { data: unknown[] };
+    expect(body.data.length).toBeLessThanOrEqual(460); // 400 + gap markers
+  });
+
   it("§18.3: internal errors never leak internals (secret-marker test)", async () => {
     const { serializeError } = await import("@/server/api/with-api");
     const res = serializeError(new Error("secret-marker-xyzzy"), "req_test");

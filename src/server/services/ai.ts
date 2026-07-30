@@ -119,6 +119,8 @@ export async function streamInvestigationMessage(
   const transport = getTransport();
   const workspaceIdForMutex = ctx.workspaceId;
   activeStreams.add(workspaceIdForMutex);
+  // §24.2: stream requests log exactly two events — start and end-with-outcome.
+  logEvent({ level: "info", event: "ai_stream", workspaceId: workspaceIdForMutex, meta: { phase: "start" } });
 
   // The SSE stream outlives the request's RLS transaction — tool executions
   // open their own withRls transactions per call.
@@ -353,12 +355,20 @@ export async function streamInvestigationMessage(
             stopped,
           });
         }
+        logEvent({
+          level: "info",
+          event: "ai_stream",
+          workspaceId: workspaceIdForMutex,
+          latencyMs: Date.now() - startedAt,
+          meta: { phase: "end", outcome: stopped ? (aborted ? "aborted" : "error") : "ok" },
+        });
       } catch (err) {
         logEvent({
           level: "error",
           event: "ai_stream",
           workspaceId: workspaceIdForMutex,
-          meta: { note: "finalize failed", name: err instanceof Error ? err.name : typeof err },
+          latencyMs: Date.now() - startedAt,
+          meta: { phase: "end", outcome: "finalize_failed", name: err instanceof Error ? err.name : typeof err },
         });
       } finally {
         clearInterval(heartbeat);

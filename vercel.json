@@ -1,0 +1,17 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "regions": ["iad1"],
+  "functions": {
+    "src/app/api/**/route.ts": { "maxDuration": 15 },
+    "src/app/api/investigations/[id]/messages/route.ts": { "maxDuration": 120 },
+    "src/app/api/imports/route.ts": { "maxDuration": 60 },
+    "src/app/api/imports/[batchId]/commit/route.ts": { "maxDuration": 60 },
+    "src/app/api/cron/nightly/route.ts": { "maxDuration": 300 }
+  },
+  "crons": [
+    {
+      "path": "/api/cron/nightly",
+      "schedule": "0 10 * * *"
+    }
+  ]
+}

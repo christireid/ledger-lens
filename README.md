@@ -196,6 +196,12 @@ audits) · [`DECISIONS.md`](DECISIONS.md) (every ambiguity resolution, append-on
 Sensitive data leaves the system only to OpenAI as part of the analysis
 contract, and only when a real key is configured.
 
+**Observability scope (§24.7):** no custom dashboards. The operating surface
+is Vercel's function/deploy views, Sentry's issue stream, Supabase's built-in
+database stats, and saved log-drain queries for the derived metrics —
+Grafana-style dashboards for a single-maintainer portfolio product would be
+decoration.
+
 ## Free-tier caveats (honest)
 
 > Supabase free tier: no PITR and limited/no automated backup retention —

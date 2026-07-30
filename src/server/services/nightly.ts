@@ -7,6 +7,7 @@ import { buildCtx, type Ctx } from "@/server/context";
 import { adminDb, withRls } from "@/server/db/rls";
 import type { RlsDb } from "@/server/db/rls";
 import { breakerOpen, getTransport } from "@/server/ai/transport";
+import { logEvent } from "@/server/obs/logger";
 import { detectorRegistry } from "@/server/engine/detect/registry";
 import type { DetectorKey, Finding } from "@/server/engine/detect/types";
 import { loadDetectorInput } from "@/server/services/detection";
@@ -134,16 +135,27 @@ export async function runDetectorsForWorkspace(
 }
 
 export async function runNightly(today: MarketDate) {
+  const startedAt = Date.now();
   // Advisory lock so a cron overlapping a deploy exits cleanly (§23.10-3).
+  // §07.11-4: transaction-scoped (pg_try_advisory_XACT_lock) — under a pooled
+  // client, session-level lock/unlock can land on different connections.
   const db = adminDb();
-  const lockRows = await db.execute(
-    rawSql`select pg_try_advisory_lock(hashtext('nightly')) as acquired`,
-  );
-  const acquired = (lockRows as unknown as Array<{ acquired: boolean }>)[0]?.acquired;
-  if (!acquired) {
-    return { skipped: true, reason: "another nightly run holds the lock" };
-  }
-  try {
+  return db.transaction(async (lockTx) => {
+    const lockRows = await lockTx.execute(
+      rawSql`select pg_try_advisory_xact_lock(hashtext('nightly')) as acquired`,
+    );
+    const acquired = (lockRows as unknown as Array<{ acquired: boolean }>)[0]?.acquired;
+    if (!acquired) {
+      // §24.8-3: the skipped run still emits its cron_run line — "no line"
+      // must always mean "cron did not fire".
+      logEvent({
+        level: "warn",
+        event: "cron_run",
+        latencyMs: Date.now() - startedAt,
+        meta: { outcome: "skipped", reason: "lock_held" },
+      });
+      return { skipped: true, reason: "another nightly run holds the lock" };
+    }
     const workspacesRows = await db.execute(rawSql`
       select id, clerk_user_id from workspaces
     `);
@@ -166,8 +178,23 @@ export async function runNightly(today: MarketDate) {
         summary.failures.push(`workspace:${ws.id}:${String(err)}`);
       }
     }
+    // §09.8: ai_eval_log retention — 90 days.
+    await db.execute(
+      rawSql`delete from ai_eval_log where created_at < now() - interval '90 days'`,
+    );
+    // §24.5 cron health: one summary line per run.
+    logEvent({
+      level: summary.failures.length ? "warn" : "info",
+      event: "cron_run",
+      latencyMs: Date.now() - startedAt,
+      meta: {
+        outcome: summary.failures.length ? "partial" : "ok",
+        workspaces: summary.workspaces,
+        snapshots: summary.snapshots,
+        anomalies: summary.anomalies,
+        failures: summary.failures.length,
+      },
+    });
     return summary;
-  } finally {
-    await db.execute(rawSql`select pg_advisory_unlock(hashtext('nightly'))`);
-  }
+  });
 }
