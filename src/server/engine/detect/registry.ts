@@ -166,12 +166,20 @@ function runD2(input: DetectorInput, params: D2Params): Finding[] {
     // Evaluate every FULL month against its own trailing-6 baseline —
     // detectors are idempotent over all data, so historical spikes surface
     // regardless of when the run happens (§07.6 idempotency rule).
-    const months = [...monthly.keys()].filter((ym) => ym < currentMonth).sort();
+    // Contiguous calendar months from the first fee month — zero-fee months
+    // count as $0 in the baseline (§14.3 D2: "trailing 6 full months").
+    const feeMonths = [...monthly.keys()].sort();
+    const months: string[] = [];
+    for (let ym = feeMonths[0]!; ym !== undefined && ym < currentMonth; ym = nextMonth(ym)) {
+      months.push(ym);
+      if (months.length > 600) break; // defensive bound
+    }
     for (let i = 0; i < months.length; i++) {
       const evalMonth = months[i]!;
+      if (!monthly.has(evalMonth)) continue; // a $0 month cannot spike
       const trailing = months.slice(Math.max(0, i - 6), i);
       if (trailing.length < params.minMonths) continue; // §14.3 D2: abstain
-      const values = trailing.map((ym) => monthly.get(ym)!.total);
+      const values = trailing.map((ym) => monthly.get(ym)?.total ?? 0);
       const mean = values.reduce((a, b) => a + b, 0) / values.length;
       const variance =
         values.reduce((a, b) => a + (b - mean) ** 2, 0) / values.length;
@@ -193,6 +201,13 @@ function runD2(input: DetectorInput, params: D2Params): Finding[] {
     }
   }
   return findings;
+}
+
+function nextMonth(ym: string): string {
+  const [y, m] = ym.split("-").map(Number);
+  const nm = m === 12 ? 1 : m! + 1;
+  const ny = m === 12 ? y! + 1 : y!;
+  return `${ny}-${String(nm).padStart(2, "0")}`;
 }
 
 // ── D3 large_transaction ─────────────────────────────────────────────────────
@@ -283,7 +298,8 @@ function runD4(input: DetectorInput, params: D4Params): Finding[] {
       title: `Equity allocation drifted ${drift.toFixed(1)} pp from its ${params.baselineDays}-day median`,
       evidenceTxIds: contributors,
       evidenceHash: evidenceHashOf("allocation_drift", contributors, { ...params, asOf: input.asOf }),
-      explainInput: { current: current.toFixed(1), median: median.toFixed(1), driftPp: drift.toFixed(1) },
+      // §14.3 D4 evidence: snapshot reference + top-10 contributing txns.
+      explainInput: { snapshotAsOf: input.asOf, current: current.toFixed(1), median: median.toFixed(1), driftPp: drift.toFixed(1) },
     },
   ];
 }
@@ -318,6 +334,17 @@ function runD5(input: DetectorInput, params: D5Params): Finding[] {
       evidenceTxIds: [],
       evidenceHash: evidenceHashOf("data_integrity", key, { kind: "incomplete_history", ...params }),
       explainInput: { kind: "incomplete_history", instruments: key },
+    });
+  }
+  if (s.overdrawnAccounts.length > 0) {
+    const key = s.overdrawnAccounts.map((o) => o.accountId);
+    findings.push({
+      detectorKey: "data_integrity",
+      severity: "medium",
+      title: `${s.overdrawnAccounts.length} account${s.overdrawnAccounts.length === 1 ? "" : "s"} with overdrawn cash (more withdrawn than recorded)`,
+      evidenceTxIds: [],
+      evidenceHash: evidenceHashOf("data_integrity", key, { kind: "overdrawn_cash", ...params }),
+      explainInput: { kind: "overdrawn_cash", accounts: key },
     });
   }
   if (s.orphanIncome.length > 0) {
@@ -379,7 +406,7 @@ export const detectorRegistry: Record<DetectorKey, DetectorDef<any>> = {
     userConfigurable: false, // detector-only in MVP (ALERT_TYPES excludes D1)
     run: runD1,
     explainTemplate: (f) =>
-      `Found ${f.explainInput.count as number} charges of ${f.explainInput.amount as string} with matching descriptions within a few days of each other. This pattern often indicates a duplicate billing.`,
+      `Found ${f.explainInput.count as number} charges of ${f.explainInput.amount as string} with matching descriptions within a few days of each other. This pattern often indicates a duplicate billing.${overflowNote(f)}`,
   },
   fee_spike: {
     key: "fee_spike",
@@ -388,7 +415,7 @@ export const detectorRegistry: Record<DetectorKey, DetectorDef<any>> = {
     userConfigurable: true,
     run: runD2,
     explainTemplate: (f) =>
-      `Fees in ${f.explainInput.month as string} totaled $${f.explainInput.total as string}, well above the ~$${f.explainInput.mean as string} monthly baseline.`,
+      `Fees in ${f.explainInput.month as string} totaled $${f.explainInput.total as string}, well above the ~$${f.explainInput.mean as string} monthly baseline.${overflowNote(f)}`,
   },
   large_transaction: {
     key: "large_transaction",
@@ -417,9 +444,11 @@ export const detectorRegistry: Record<DetectorKey, DetectorDef<any>> = {
     explainTemplate: (f) => {
       const kind = f.explainInput.kind as string;
       if (kind === "inconsistent_amount")
-        return "Some rows have amounts that disagree with quantity × price beyond normal rounding.";
+        return `Some rows have amounts that disagree with quantity × price beyond normal rounding.${overflowNote(f)}`;
       if (kind === "incomplete_history")
         return "Some positions were sold in greater quantity than the imported history shows being bought — earlier records are likely missing.";
+      if (kind === "overdrawn_cash")
+        return "An account shows more cash withdrawn than deposited in the imported history — earlier deposits are likely missing.";
       return "Income was recorded for instruments with no recorded holdings.";
     },
   },
@@ -434,5 +463,11 @@ export const detectorRegistry: Record<DetectorKey, DetectorDef<any>> = {
   },
 };
 /* eslint-enable @typescript-eslint/no-explicit-any */
+
+/** §14.5-4: the 100-row evidence cap is disclosed, never silent. */
+function overflowNote(f: Finding): string {
+  const overflow = Number(f.explainInput.overflow ?? 0);
+  return overflow > 0 ? ` (evidence lists the first 100 rows; ${overflow} more matched)` : "";
+}
 
 export { evidenceHashOf };

@@ -48,6 +48,7 @@ export const POST = withApi(
         sampleRows: result.parsed.rows.slice(0, 20),
         rowCount: result.parsed.rows.length,
         suggestedMapping: result.suggestedMapping,
+        suggestions: result.suggestions,
         syntheticHeaders: result.parsed.syntheticHeaders,
       });
     } catch (err) {

@@ -168,5 +168,8 @@ export function computeSnapshot(
     incompleteHistoryCount: positions.filter((p) =>
       p.flags.includes("incomplete_history"),
     ).length,
+    overdrawnAccounts: result.cash
+      .filter((c) => c.overdrawn)
+      .map((c) => ({ accountId: c.accountId, currency: c.currency })),
   };
 }

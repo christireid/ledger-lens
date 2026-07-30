@@ -8,7 +8,11 @@ import { mapImportError } from "@/server/api/import-errors";
 import { NotFoundError } from "@/server/errors";
 import { recomputeAfterChange } from "@/server/api/recompute";
 import { getBatch } from "@/server/services/import-queries";
-import { commitBatch } from "@/server/services/imports";
+import { eq } from "drizzle-orm";
+
+import { adminDb } from "@/server/db/rls";
+import { importBatches } from "@/server/db/schema";
+import { commitBatch, ImportError } from "@/server/services/imports";
 
 export const POST = withApi(
   { bodySchema: ImportCommitBodySchema },
@@ -29,7 +33,21 @@ export const POST = withApi(
       }
       return ok(batchToWire(await getBatch(ctx, db, result.batchId)));
     } catch (err) {
-      throw mapImportError(err);
+      // §15.5: a commit-time failure (FK, constraint, crash) marks the batch
+      // failed. The request transaction is rolling back, so persist via the
+      // admin handle; idempotent-commit and validation errors keep their state.
+      const mapped = mapImportError(err);
+      if (mapped instanceof Error && !(err instanceof ImportError)) {
+        try {
+          await adminDb()
+            .update(importBatches)
+            .set({ status: "failed" })
+            .where(eq(importBatches.id, uuid));
+        } catch {
+          /* status write is best-effort */
+        }
+      }
+      throw mapped;
     }
   },
 );

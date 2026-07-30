@@ -109,4 +109,6 @@ export type ComputedSnapshot = {
   rowFlags: RowFlag[];
   orphanIncome: OrphanIncome[];
   incompleteHistoryCount: number;
+  /** §14.3 D5: accounts whose cash balance is negative at asOf (§12.4 flag). */
+  overdrawnAccounts: Array<{ accountId: AccountId; currency: CurrencyCode }>;
 };
