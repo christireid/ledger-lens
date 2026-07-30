@@ -1,0 +1,102 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Design tokens — spec §04.3. Single source of truth for every visual value.
+ * Components never reference raw hex/px values (§04.1, lint-enforced §06.12).
+ * HSL triplets, shadcn/ui convention. Light under :root, dark under .dark.
+ */
+@layer base {
+  :root {
+    /* §04.3.1 semantic tokens — light */
+    --background: 0 0% 100%;
+    --foreground: 222 18% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 18% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 18% 12%;
+    --muted: 216 14% 96%;
+    --muted-foreground: 220 9% 42%;
+    --border: 216 12% 88%;
+    --input: 216 12% 88%;
+    --primary: 178 46% 32%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 216 14% 96%;
+    --secondary-foreground: 222 18% 12%;
+    --accent: 216 14% 96%;
+    --accent-foreground: 222 18% 12%;
+    --destructive: 0 62% 42%;
+    --destructive-foreground: 0 0% 100%;
+    --ring: 178 46% 38%;
+
+    /* §04.3.2 data-semantic tokens — light */
+    --gain: 152 42% 30%;
+    --loss: 4 64% 42%;
+    --warning: 38 80% 38%;
+    --critical: 356 70% 40%;
+    --info: 214 60% 42%;
+    /* categorical ramp: teal, slate-blue, amber, plum, moss, clay */
+    --chart-1: 178 46% 34%;
+    --chart-2: 222 30% 45%;
+    --chart-3: 38 80% 44%;
+    --chart-4: 300 25% 40%;
+    --chart-5: 100 28% 36%;
+    --chart-6: 18 45% 45%;
+
+    /* §04.3.4 radius family — cards/dialogs 8, inputs/buttons 6, chips full */
+    --radius: 8px;
+  }
+
+  .dark {
+    /* §04.3.1 semantic tokens — dark */
+    --background: 222 18% 9%;
+    --foreground: 210 12% 92%;
+    --card: 222 16% 12%;
+    --card-foreground: 210 12% 92%;
+    --popover: 222 16% 12%;
+    --popover-foreground: 210 12% 92%;
+    --muted: 222 14% 16%;
+    --muted-foreground: 218 8% 62%;
+    --border: 222 12% 22%;
+    --input: 222 12% 22%;
+    --primary: 178 42% 46%;
+    --primary-foreground: 222 18% 9%;
+    --secondary: 222 14% 16%;
+    --secondary-foreground: 210 12% 92%;
+    --accent: 222 14% 16%;
+    --accent-foreground: 210 12% 92%;
+    --destructive: 0 62% 54%;
+    --destructive-foreground: 222 18% 9%;
+    --ring: 178 42% 52%;
+
+    /* §04.3.2 data-semantic tokens — dark (adjusted-lightness variants) */
+    --gain: 152 40% 48%;
+    --loss: 4 60% 56%;
+    --warning: 38 78% 52%;
+    --critical: 356 66% 54%;
+    --info: 214 55% 58%;
+    --chart-1: 178 42% 52%;
+    --chart-2: 222 35% 64%;
+    --chart-3: 38 78% 58%;
+    --chart-4: 300 28% 62%;
+    --chart-5: 100 26% 54%;
+    --chart-6: 18 45% 60%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    /* Inter tabular numbers globally as fallback where mono is too heavy (§04.3.3) */
+    font-feature-settings: "tnum";
+  }
+  /* Focus ring: 2px --ring with 2px offset, :focus-visible only, never removed (§04.10) */
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+}

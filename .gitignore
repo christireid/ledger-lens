@@ -1,0 +1,25 @@
+# dependencies
+node_modules/
+
+# next.js
+.next/
+out/
+next-env.d.ts
+
+# production
+build/
+
+# env — secrets never in the repo (§23.4)
+.env
+.env.local
+.env.*.local
+
+# testing
+coverage/
+playwright-report/
+test-results/
+
+# misc
+.DS_Store
+*.pem
+*.tsbuildinfo

@@ -25,12 +25,12 @@ Dependencies strict: M0 → M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8 
 ### M0 — Scaffold & rails
 Spec inputs: 06.2–3, 06.12, 07.9, 23. Verify: `pnpm typecheck && pnpm lint && pnpm build`.
 
-- [ ] Next app scaffold (App Router, strict TS)
-- [ ] Tailwind + design tokens (04.3 globals.css)
-- [ ] Lint rules incl. architecture greps
-- [ ] server/env.ts (validated env per 23.4)
-- [ ] pnpm scripts incl. `verify:all`
-- [ ] Verify gate green
+- [x] Next app scaffold (App Router, strict TS + noUncheckedIndexedAccess + exactOptionalPropertyTypes, @/* alias, all code under src/)
+- [x] Tailwind + design tokens (04.3 globals.css — full §04.3.1/04.3.2 tables, radius family, focus-ring rule; Inter + JetBrains Mono via next/font)
+- [x] Lint rules incl. architecture greps (eslint flat config: alias-only imports, lucide registry rule; scripts/arch-grep.sh: hex colors, arbitrary Tailwind values, inline style, @apply, raw query keys, server-import-in-client)
+- [x] server/env.ts (Zod-validated per 23.4; prod-required set enforced, DEMO_E2E_SECRET asserted absent in prod; openAiIsMocked helper) + lib/env.client.ts + lib/flags.ts (F10–F14 dark)
+- [x] pnpm scripts incl. `verify:all` (full §23.3 inventory; unimplemented db/size/explain scripts fail loudly until their milestone)
+- [x] Verify gate green — `pnpm typecheck && pnpm lint && pnpm build` and `pnpm verify:all` pass (2026-07-30)
 
 ### M1 — Schema & data layer
 Spec inputs: 09 (all), 16, 07.3. Verify: `pnpm db:migrate && pnpm test:unit` (marshal round-trip, enum parity, DDL snapshot).
