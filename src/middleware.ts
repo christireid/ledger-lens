@@ -51,7 +51,8 @@ function apply(
 
 const withClerk = clerkMiddleware(async (auth, req) => {
   const { userId } = await auth();
-  return apply(req, userId !== null) ?? NextResponse.next();
+  const res = apply(req, userId !== null) ?? NextResponse.next();
+  return withSecurityHeaders(res, req.nextUrl.pathname);
 });
 
 function testSessionAuthed(req: NextRequest): boolean {
@@ -69,7 +70,37 @@ function keyless(req: NextRequest) {
   return apply(req, testSessionAuthed(req)) ?? NextResponse.next();
 }
 
-export default hasClerkKeys ? withClerk : keyless;
+/**
+ * §21.4 CSP — nonce per request for app/auth routes; the marketing page stays
+ * static (SSG) with a no-nonce policy set in next.config headers.
+ */
+function withSecurityHeaders(res: NextResponse, pathname: string): NextResponse {
+  if (pathname === "/" || pathname.startsWith("/api/")) return res;
+  const nonce = Buffer.from(crypto.getRandomValues(new Uint8Array(16))).toString("base64");
+  const clerkApi = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+    ? "https://*.clerk.accounts.dev https://clerk.com"
+    : "";
+  const csp = [
+    "default-src 'self'",
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' ${clerkApi}`.trim(),
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: https://img.clerk.com",
+    "font-src 'self'",
+    `connect-src 'self' ${clerkApi}`.trim(),
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+  ].join("; ");
+  res.headers.set("Content-Security-Policy", csp);
+  res.headers.set("x-nonce", nonce);
+  return res;
+}
+
+function keylessWithHeaders(req: NextRequest) {
+  return withSecurityHeaders(keyless(req), req.nextUrl.pathname);
+}
+
+export default hasClerkKeys ? withClerk : keylessWithHeaders;
 
 export const config = {
   matcher: [
