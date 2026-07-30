@@ -25,7 +25,7 @@ const AllocationDonut = dynamic(
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { apiFetch } from "@/lib/api/fetch";
 import { qk } from "@/lib/api/keys";
 
@@ -168,6 +168,10 @@ export function DashboardClient() {
                   </TabsTrigger>
                 ))}
               </TabsList>
+              {/* Filter-style tabs: empty panels keep aria-controls targets valid (§19). */}
+              {RANGES.map((r) => (
+                <TabsContent key={r} value={r} className="hidden" />
+              ))}
             </Tabs>
           </CardHeader>
           <CardContent>

@@ -33,7 +33,7 @@
     /* §04.3.2 data-semantic tokens — light */
     --gain: 152 42% 30%;
     --loss: 4 64% 42%;
-    --warning: 38 80% 38%;
+    --warning: 38 80% 30%;
     --critical: 356 70% 40%;
     --info: 214 60% 42%;
     /* categorical ramp: teal, slate-blue, amber, plum, moss, clay */

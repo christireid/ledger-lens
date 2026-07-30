@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { apiFetch } from "@/lib/api/fetch";
 import { qk } from "@/lib/api/keys";
 import { useAppMutation } from "@/lib/api/mutations";
@@ -103,6 +103,10 @@ export default function AnomaliesPage() {
               </TabsTrigger>
             ))}
           </TabsList>
+          {/* Filter-style tabs: empty panels keep aria-controls targets valid (§19). */}
+          {STATUSES.map((s) => (
+            <TabsContent key={s} value={s} className="hidden" />
+          ))}
         </Tabs>
         {selected.size > 0 && status === "open" && (
           <Button

@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export function KitchenSinkClient() {
   return (
@@ -86,6 +86,8 @@ export function KitchenSinkClient() {
                 <TabsTrigger value="one">One</TabsTrigger>
                 <TabsTrigger value="two">Two</TabsTrigger>
               </TabsList>
+              <TabsContent value="one" className="hidden" />
+              <TabsContent value="two" className="hidden" />
             </Tabs>
           </div>
         </section>
