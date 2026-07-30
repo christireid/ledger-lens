@@ -1,0 +1,244 @@
+# CI pipeline — §23.5. Stage names match the spec's flow diagram verbatim.
+# Solid-line stages block merge (§22.9). The Vercel preview legs are gated on
+# the VERCEL_PREVIEW_ENABLED repository variable because secrets cannot be
+# referenced in job-level `if`; when preview is disabled (operator gap — no
+# Vercel project configured, see DECISIONS.md) the E2E and Lighthouse legs run
+# against a local production build with a seeded local Postgres, which is the
+# same harness `pnpm e2e` uses in development.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  PLAYWRIGHT_BROWSERS_PATH: ~/.cache/ms-playwright
+
+jobs:
+  install:
+    name: install
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+  lint-typecheck:
+    name: lint + typecheck
+    needs: install
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm lint
+
+  unit-property-contract:
+    name: unit + property + contract
+    needs: lint-typecheck
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ledger_lens
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s
+          --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/ledger_lens
+      DIRECT_URL: postgres://postgres:postgres@localhost:5432/ledger_lens
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm db:migrate
+      - run: pnpm test
+      - run: pnpm test:contract
+
+  integration:
+    name: integration vs Supabase local
+    needs: lint-typecheck
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ledger_lens
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s
+          --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/ledger_lens
+      DIRECT_URL: postgres://postgres:postgres@localhost:5432/ledger_lens
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm db:migrate
+      - run: pnpm test:integration
+
+  build-budgets:
+    name: build + bundle budgets
+    needs: [unit-property-contract, integration]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm size
+      - uses: actions/upload-artifact@v4
+        with:
+          name: next-build
+          path: .next
+          retention-days: 3
+
+  preview-deploy:
+    name: Vercel preview deploy + DB reset/seed
+    needs: build-budgets
+    if: vars.VERCEL_PREVIEW_ENABLED == 'true'
+    # §23.10-1: concurrent PR previews share one preview DB — serialize, last
+    # writer wins, superseded runs cancel.
+    concurrency:
+      group: preview-deploy
+      cancel-in-progress: true
+    runs-on: ubuntu-latest
+    outputs:
+      url: ${{ steps.deploy.outputs.url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # §23.5: reset+seed the preview project, apply migrations, THEN deploy —
+      # every E2E/LHCI run sees a deterministic seeded world.
+      - run: pnpm db:reset
+        env:
+          DATABASE_URL: ${{ secrets.PREVIEW_DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.PREVIEW_DIRECT_URL }}
+      - id: deploy
+        run: |
+          url=$(pnpm dlx vercel deploy --token "$VERCEL_TOKEN" --yes)
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      - name: post-deploy verification (§24.6)
+        run: curl --fail --silent "${{ steps.deploy.outputs.url }}/api/health"
+
+  e2e:
+    name: E2E + axe + keyboard + hydration
+    needs: [build-budgets, preview-deploy]
+    if: always() && needs.build-budgets.result == 'success' && (needs.preview-deploy.result == 'success' || needs.preview-deploy.result == 'skipped')
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ledger_lens
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s
+          --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/ledger_lens
+      DIRECT_URL: postgres://postgres:postgres@localhost:5432/ledger_lens
+      DEMO_E2E_SECRET: ci-e2e-secret
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm db:migrate
+      - run: pnpm e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report
+          retention-days: 7
+
+  lighthouse:
+    name: Lighthouse CI
+    needs: [build-budgets, preview-deploy]
+    if: always() && needs.build-budgets.result == 'success' && (needs.preview-deploy.result == 'success' || needs.preview-deploy.result == 'skipped')
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ledger_lens
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s
+          --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/ledger_lens
+      DIRECT_URL: postgres://postgres:postgres@localhost:5432/ledger_lens
+      DEMO_E2E_SECRET: ci-e2e-secret
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm db:migrate
+      - run: pnpm build
+      - name: collect + assert (§20.8)
+        run: node scripts/lighthouse-ci.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lhci-report
+          path: .lighthouseci
+          retention-days: 7
+
+  merge-gate:
+    name: merge gate
+    needs: [e2e, lighthouse]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: all blocking legs green
+        run: |
+          [ "${{ needs.e2e.result }}" = "success" ] || exit 1
+          [ "${{ needs.lighthouse.result }}" = "success" ] || exit 1

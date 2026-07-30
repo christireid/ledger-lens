@@ -1,0 +1,10 @@
+
+ RUN  v3.2.7 /home/user/ledger-lens
+
+ ✓ src/server/db/cross-tenant.integration.test.ts (11 tests) 218ms
+
+ Test Files  1 passed (1)
+      Tests  11 passed (11)
+   Start at  18:20:54
+   Duration  1.50s (transform 138ms, setup 0ms, collect 833ms, tests 218ms, environment 0ms, prepare 119ms)
+

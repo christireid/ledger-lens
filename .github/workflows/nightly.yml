@@ -1,0 +1,74 @@
+# Nightly jobs — §23.5 (dotted leg, non-blocking: failures open issues, never
+# block merges) and §23.9 (backup). Legs needing paid/externally-configured
+# services are gated on repository variables/secrets presence.
+name: nightly
+
+on:
+  schedule:
+    - cron: "30 6 * * *"
+  workflow_dispatch:
+
+jobs:
+  eval:
+    name: pnpm eval (AI golden cases, §08.9)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm eval
+        env:
+          # MOCK transport unless the operator enables the real-API smoke.
+          OPENAI_API_KEY: ${{ vars.OPENAI_SMOKE == 'true' && secrets.OPENAI_API_KEY || 'MOCK' }}
+          OPENAI_SMOKE: ${{ vars.OPENAI_SMOKE }}
+
+  audit:
+    name: pnpm audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm audit --audit-level high
+
+  cold-start-synthetic:
+    name: cold-start synthetic (§20.2/§24.5)
+    if: vars.PROD_URL != ''
+    runs-on: ubuntu-latest
+    steps:
+      - name: 10 invocations of /api/health, report p95
+        run: |
+          for i in $(seq 1 10); do
+            curl -o /dev/null -s -w "%{time_total}\n" "${{ vars.PROD_URL }}/api/health"
+            sleep 3
+          done | sort -n | awk '{a[NR]=$1} END {print "p95:", a[int(NR*0.95)] "s"}'
+
+  backup:
+    name: nightly pg_dump (§23.9 free-tier mitigation)
+    if: vars.BACKUP_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: dump
+        run: |
+          pg_dump "$DIRECT_URL" --no-owner --format=custom --file=backup.dump
+        env:
+          DIRECT_URL: ${{ secrets.PROD_DIRECT_URL }}
+      - name: encrypt
+        run: |
+          openssl enc -aes-256-cbc -pbkdf2 -salt -in backup.dump -out backup.dump.enc -pass env:BACKUP_PASSPHRASE
+          rm backup.dump
+        env:
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: db-backup-${{ github.run_id }}
+          path: backup.dump.enc
+          retention-days: 30

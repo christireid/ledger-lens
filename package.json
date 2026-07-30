@@ -7,7 +7,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint . && pnpm arch:grep",
+    "lint": "eslint . && pnpm arch:grep && node scripts/flag-age-check.mjs",
     "arch:grep": "bash scripts/arch-grep.sh",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",

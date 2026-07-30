@@ -1,0 +1,8 @@
+> ledger-lens@0.1.0 size /home/user/ledger-lens
+> node scripts/size-check.mjs
+
+size ok   /: 103.7KB gz / 130KB ceiling (80%)
+size ok   /app/dashboard: 150.8KB gz / 250KB ceiling (60%)
+size ok   /app/ledger: 174.6KB gz / 200KB ceiling (87%)
+size ok   /app/anomalies: 161.9KB gz / 210KB ceiling (77%)
+size ok   /app/imports/new: 169.2KB gz / 220KB ceiling (77%)

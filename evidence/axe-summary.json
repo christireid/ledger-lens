@@ -1,0 +1,55 @@
+{
+  "generatedFor": "§25.4 evidence pack",
+  "summaries": [
+    {
+      "route": "/",
+      "violations": 0,
+      "serious": 0
+    },
+    {
+      "route": "/app/dashboard",
+      "violations": 1,
+      "serious": 0
+    },
+    {
+      "route": "/app/ledger",
+      "violations": 1,
+      "serious": 0
+    },
+    {
+      "route": "/app/anomalies",
+      "violations": 0,
+      "serious": 0
+    },
+    {
+      "route": "/app/investigations",
+      "violations": 0,
+      "serious": 0
+    },
+    {
+      "route": "/app/alerts",
+      "violations": 0,
+      "serious": 0
+    },
+    {
+      "route": "/app/imports",
+      "violations": 0,
+      "serious": 0
+    },
+    {
+      "route": "/app/imports/new",
+      "violations": 0,
+      "serious": 0
+    },
+    {
+      "route": "/app/settings",
+      "violations": 0,
+      "serious": 0
+    },
+    {
+      "route": "/dev/kitchen-sink",
+      "violations": 0,
+      "serious": 0
+    }
+  ]
+}
