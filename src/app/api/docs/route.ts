@@ -86,5 +86,12 @@ function buildDocument() {
 }
 
 export async function GET(): Promise<Response> {
+  // §17.5: published in non-prod; prod hides the surface (§10.6 posture).
+  if (process.env.VERCEL_ENV === "production" && !process.env.DEMO_E2E_SECRET) {
+    return Response.json(
+      { error: { code: "not_found", message: "Not found.", requestId: "docs" } },
+      { status: 404 },
+    );
+  }
   return Response.json(buildDocument());
 }

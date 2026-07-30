@@ -50,6 +50,13 @@
       "when": 1785437900000,
       "tag": "0006_supersedes_fk_index",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1785438900000,
+      "tag": "0007_anomaly_triage_note",
+      "breakpoints": true
     }
   ]
 }

@@ -31,6 +31,7 @@ export async function setAnomalyStatus(
   db: RlsDb,
   id: string,
   status: AnomalyStatus,
+  note?: string,
 ) {
   if (!ctx.can("anomalies:triage")) throw new ForbiddenError();
   const [row] = await db
@@ -39,6 +40,7 @@ export async function setAnomalyStatus(
       status,
       statusChangedBy: ctx.userId,
       statusChangedAt: ctx.clock(),
+      ...(note !== undefined ? { triageNote: note } : {}),
     })
     .where(and(eq(anomalies.id, id), eq(anomalies.workspaceId, ctx.workspaceId)))
     .returning();

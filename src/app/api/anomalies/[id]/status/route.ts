@@ -10,7 +10,7 @@ export const POST = withApi(
   async ({ ctx, db, body, params }) => {
     const uuid = fromPublicId("anomaly", params.id ?? "");
     if (!uuid) throw new NotFoundError();
-    const row = await setAnomalyStatus(ctx, db, uuid, body.status);
+    const row = await setAnomalyStatus(ctx, db, uuid, body.status, body.note);
     return ok(anomalyToWire(row));
   },
 );

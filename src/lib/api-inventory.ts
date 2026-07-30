@@ -83,4 +83,6 @@ export const API_INVENTORY: EndpointRow[] = [
   { method: "GET", path: "/cron/nightly", routeFile: "cron/nightly/route.ts", auth: "cron-secret" },
   { method: "GET", path: "/health", routeFile: "health/route.ts", auth: "public" },
   { method: "GET", path: "/docs", routeFile: "docs/route.ts", auth: "public" },
+  // §24.4 digest beacon — accepts only a digest string; no session, no data.
+  { method: "POST", path: "/client-error", routeFile: "client-error/route.ts", auth: "public" },
 ];

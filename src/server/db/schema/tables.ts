@@ -242,6 +242,7 @@ export const anomalies = pgTable(
     ),
     statusChangedBy: text("status_changed_by"),
     statusChangedAt: timestamp("status_changed_at", { withTimezone: true }),
+    triageNote: text("triage_note"), // §17.2 optional note — US-05 audit field
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },

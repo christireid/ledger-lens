@@ -14,14 +14,21 @@ function makeQueryClient() {
     defaultOptions: {
       queries: {
         staleTime: 30_000,
-        gcTime: 10 * 60_000,
+        gcTime: 15 * 60_000, // §20.6
         refetchOnWindowFocus: true,
         retry: (failureCount, error) => {
-          // §18.4: GETs retry ≤2, never on 4xx.
+          // §18.4: GETs retry ≤2 — network failures, 5xx, and rate_limited only.
           if (error instanceof ApiError && error.status < 500 && error.code !== "rate_limited") {
             return false;
           }
           return failureCount < 2;
+        },
+        // §18.4: full jitter; rate_limited honors retryAfter.
+        retryDelay: (attempt, error) => {
+          if (error instanceof ApiError && error.code === "rate_limited" && error.retryAfter) {
+            return error.retryAfter * 1000;
+          }
+          return Math.random() * Math.min(1000 * 2 ** attempt, 8000);
         },
       },
       mutations: { retry: false },

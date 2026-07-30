@@ -240,6 +240,7 @@ function validCaseFor(row: EndpointRow): Case | null {
     "POST /workspace/demo": { body: { action: "clear" }, status: 202 },
     "GET /health": { status: 200 },
     "GET /docs": { status: 200 },
+    "POST /client-error": { body: { digest: "abc123" }, status: 204, skipInvalid: true },
   };
   return map[key] ?? null;
 }
