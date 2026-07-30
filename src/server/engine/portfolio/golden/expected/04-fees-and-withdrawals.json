@@ -1,0 +1,22 @@
+{
+  "asOf": "2026-03-31",
+  "positions": [],
+  "perAccount": [
+    {
+      "accountId": "00000000-0000-4000-8000-000000009001",
+      "currency": "USD",
+      "cashValue": "2480.0200",
+      "totalValue": "2480.0200"
+    }
+  ],
+  "perCurrency": {
+    "USD": {
+      "totalValue": "2480.0200",
+      "cashValue": "2480.0200"
+    }
+  },
+  "realizedPnlCum": {},
+  "rowFlags": [],
+  "orphanIncome": [],
+  "incompleteHistoryCount": 0
+}

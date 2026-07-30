@@ -31,3 +31,11 @@ Format per entry: date · question · options considered · choice · affected s
 **2026-07-30 · Keyless Clerk mode.** Operator Clerk keys absent (HALT item). Options: (a) block M2 entirely; (b) wire Clerk fully but gate on key presence — middleware treats all requests as anonymous (matrix behavior identical to anon), auth screens render the §05.3 designed "unavailable" card (the same card §10.7-6 requires for Clerk outages). Chose (b): route matrix, bootstrap, RLS bridge, and webhook are all fully built and tested; only the live hosted-component sign-in flow awaits keys. Affected: 10.2, 10.3, 05.3, M2.
 
 **2026-07-30 · Env prod-strictness trigger.** `next build` sets NODE_ENV=production even for local builds, so keying the §23.4 required-set on NODE_ENV made every local build fail without operator credentials. Chose VERCEL_ENV==='production' || ENV_STRICT==='1' as the "deploy" signal — §07.9's fail-the-deploy guarantee intact, local builds green. Affected: 07.9, 23.4.
+
+**2026-07-30 · Engine internal precision.** §12.2-4 demands integer money math with no intermediate rounding, but proportional average-cost (costBasis×q/qtyHeld) is not exactly representable at ×10⁴. Chose an internal ×10¹² scale (money 10⁴ × qty 10⁸ products are exact) with truncating proportional-cost division (exact at sell-to-zero, guaranteeing §12.7-4) and banker's rounding once at presentation. Affected: 12.2, 12.4.
+
+**2026-07-30 · Snapshot flags persistence.** §16.3 Snapshot carries flags ('partial_backfill'|'stale') but §09.3's snapshot row has no flags column. Added an additive `flags text[]` column (0003) — §09.7 permits additive migrations; storing inside positions jsonb would corrupt its "array of Position objects" contract. Affected: 09.3, 16.3.
+
+**2026-07-30 · Snapshot UPDATE grant.** 0001 granted app_user UPDATE only on "mutable" tables, omitting portfolio_snapshots; the §07.6 upsert requires UPDATE for ON CONFLICT DO UPDATE. Added grant (0004). Affected: 09.3, 21.
+
+**2026-07-30 · Zero-floats rule mechanics.** §12.8 asks for a lint rule banning number arithmetic on Money/Qty; the branded-bigint types make any number↔Money arithmetic a TypeScript compile error (bigint/number mixing is illegal), so `pnpm typecheck` is the mechanical enforcement. No separate ESLint rule needed. Affected: 12.8.

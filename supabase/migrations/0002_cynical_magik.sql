@@ -1,0 +1,1 @@
+ALTER TABLE "portfolio_snapshots" ADD COLUMN "realized_pnl_cum" numeric(18, 4);

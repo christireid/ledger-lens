@@ -1,0 +1,1 @@
+ALTER TABLE "portfolio_snapshots" ADD COLUMN "flags" text[] DEFAULT '{}'::text[] NOT NULL;

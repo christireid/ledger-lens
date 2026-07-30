@@ -55,11 +55,11 @@ Spec inputs: 10, 11, 05.3. Verify: route-matrix test, bootstrap race test, cross
 ### M3 — Portfolio Engine
 Spec inputs: 12, 13, 16.2 Money/Qty. Verify: golden-file suite + property tests + 50k perf test (`pnpm test:engine`).
 
-- [ ] Pure engine
-- [ ] PricingSource
-- [ ] Snapshot orchestration
-- [ ] Analytics queries
-- [ ] Verify gate green
+- [x] Pure engine (server/engine/portfolio: replay per §12.3/§12.4 — scaled-bigint math (×10¹² internal), average-cost, oversell split w/ incomplete_history + negative qty preserved, zero-price lots, orphan income, overdrawn cash, amount-consistency flags; banker's rounding at presentation only)
+- [x] PricingSource (LastTradePricingSource §12.5; injected seam per §02.9; CostBasisMethod seam per §12.6)
+- [x] Snapshot orchestration (advisory-lock serialized, daily backfill bounded 366 days w/ partial_backfill flag, reproducibility watermark, upsert on (workspace, as_of); added flags column + snapshot UPDATE grant migrations)
+- [x] Analytics queries (§13.2 definitions as raw SQL: period aggregates, snapshot series w/ weekly downsampling >400 pts, realized-P&L-by-subtraction via realized_pnl_cum scalar (§13.3 amendment applied), flow-adjusted value change)
+- [x] Verify gate green — `pnpm test:engine` (16 goldens hand-verified + 10 property/unit + 50k perf in 0.5s vs 20s budget); 21 integration tests (concurrent recompute serialization, metric parity §13.5); cumulative `pnpm verify:all` 69 tests (2026-07-30)
 
 ### M4 — Import pipeline
 Spec inputs: 15, 05.9 API side, 17 import rows. Verify: 40-file adversarial corpus green; commit idempotency; seed determinism (two runs, identical output hash).

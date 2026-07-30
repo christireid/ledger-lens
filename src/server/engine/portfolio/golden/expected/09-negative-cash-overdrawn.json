@@ -1,0 +1,33 @@
+{
+  "asOf": "2026-03-31",
+  "positions": [
+    {
+      "instrumentId": "00000000-0000-4000-8000-000000000103",
+      "qty": "10.00000000",
+      "costBasis": "1000.0000",
+      "avgCost": "100.0000",
+      "marketValue": "1000.0000",
+      "unrealizedPnl": "0.0000",
+      "currency": "USD",
+      "flags": []
+    }
+  ],
+  "perAccount": [
+    {
+      "accountId": "00000000-0000-4000-8000-000000009001",
+      "currency": "USD",
+      "cashValue": "-900.0000",
+      "totalValue": "100.0000"
+    }
+  ],
+  "perCurrency": {
+    "USD": {
+      "totalValue": "100.0000",
+      "cashValue": "-900.0000"
+    }
+  },
+  "realizedPnlCum": {},
+  "rowFlags": [],
+  "orphanIncome": [],
+  "incompleteHistoryCount": 0
+}

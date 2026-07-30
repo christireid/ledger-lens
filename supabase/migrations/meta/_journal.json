@@ -15,6 +15,27 @@
       "when": 1785424060230,
       "tag": "0001_rls_and_guards",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1785425012495,
+      "tag": "0002_cynical_magik",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1785425301174,
+      "tag": "0003_great_ser_duncan",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1785425490161,
+      "tag": "0004_snapshot_upsert_grant",
+      "breakpoints": true
     }
   ]
 }

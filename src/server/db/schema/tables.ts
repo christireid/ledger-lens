@@ -193,6 +193,9 @@ export const portfolioSnapshots = pgTable(
     computedAt: timestamp("computed_at", { withTimezone: true }),
     totalValue: numeric("total_value", { precision: 18, scale: 4 }),
     cashValue: numeric("cash_value", { precision: 18, scale: 4 }),
+    // §13.3 (normative amendment to §09.3): cumulative realized P&L scalar so
+    // period values are subtraction, not re-replay.
+    realizedPnlCum: numeric("realized_pnl_cum", { precision: 18, scale: 4 }),
     schemaVersion: integer("schema_version").notNull().default(1),
     positions: jsonb("positions").notNull(), // read-whole-or-not-at-all (§09.3 rationale)
     perAccount: jsonb("per_account"),
@@ -200,6 +203,9 @@ export const portfolioSnapshots = pgTable(
     inputMaxTxCreatedAt: timestamp("input_max_tx_created_at", {
       withTimezone: true,
     }), // reproducibility watermark; null = computed from empty ledger
+    // §16.3 Snapshot.flags persistence ('partial_backfill' | 'stale') —
+    // additive column, DECISIONS.md 2026-07-30.
+    flags: text("flags").array().notNull().default(sql`'{}'::text[]`),
     createdAt: createdAt(),
   },
   (t) => [
