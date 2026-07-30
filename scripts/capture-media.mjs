@@ -21,6 +21,10 @@ const USER = `media_${Date.now()}`;
 const OUT = "docs/media";
 mkdirSync(OUT, { recursive: true });
 
+const GIF_VIEW = { width: 1080, height: 675 };
+const HOLD = 1300; // ms shown for a settled state
+const STEP = 450; // ms shown for a transition state
+
 const server = spawn("pnpm", ["exec", "next", "start", "-p", String(PORT)], {
   stdio: "ignore",
   env: {
@@ -58,12 +62,11 @@ async function newPage(browser, { dark = true, width = 1440, height = 900, dsf =
   return { context, page: await context.newPage() };
 }
 
-async function settle(page, extra = 1400) {
+async function settle(page, extra = 1200) {
   await page.waitForLoadState("networkidle");
-  await sleep(extra); // chart/motion settle
+  await sleep(extra);
 }
 
-/** GIF assembly — per-frame palettes via gifenc. */
 function writeGif(file, frames) {
   const gif = GIFEncoder();
   for (const { buffer, delay } of frames) {
@@ -82,9 +85,26 @@ const shot = async (page, name) => {
   console.log(`wrote ${OUT}/${name}.png`);
 };
 
+/** Frame recorder bound to one page. */
+function recorder(page) {
+  const frames = [];
+  return {
+    frames,
+    frame: async (delay = STEP) => frames.push({ buffer: await page.screenshot(), delay }),
+  };
+}
+
+const SAMPLE_CSV = [
+  "Date,Description,Amount,Type,Symbol,Quantity,Price",
+  "2026-06-02,ACME PAYROLL,2500.00,deposit,,,",
+  "2026-06-03,YOU BOUGHT AAPL,-1850.50,bought,AAPL,10,185.05",
+  "2026-06-10,STREAMFLIX MONTHLY,-15.99,debit,,,",
+  "2026-06-15,BROKER FEE,-4.95,fee,,,",
+  "not-a-date,BAD ROW,-10.00,debit,,,",
+].join("\r\n");
+
 try {
   await waitUp();
-  // Seed the demo workspace (deterministic dataset, planted findings — §15.7).
   const seed = await fetch(`${BASE}/api/workspace/demo`, {
     method: "POST",
     headers: {
@@ -105,14 +125,14 @@ try {
   {
     const { context, page } = await newPage(browser, { dark: false });
     await page.goto("/");
-    await settle(page, 800);
+    await settle(page, 700);
     await shot(page, "marketing-light");
     await context.close();
   }
   {
     const { context, page } = await newPage(browser);
     await page.goto("/");
-    await settle(page, 800);
+    await settle(page, 700);
     await shot(page, "marketing-dark");
 
     await page.goto("/app/dashboard");
@@ -127,7 +147,6 @@ try {
     await settle(page);
     await shot(page, "anomalies");
 
-    // AI investigation with the deterministic mock transport (§08).
     await page.goto("/app/investigations");
     await page.getByTestId("new-investigation").click();
     await page.waitForURL(/\/app\/investigations\/inv_/, { timeout: 20_000 });
@@ -137,21 +156,11 @@ try {
     await sleep(900);
     await shot(page, "investigation");
 
-    // Import wizard at the dry-run preview step.
     await page.goto("/app/imports/new");
     await page.getByTestId("file-input").setInputFiles({
       name: "brokerage-export.csv",
       mimeType: "text/csv",
-      buffer: Buffer.from(
-        [
-          "Date,Description,Amount,Type,Symbol,Quantity,Price",
-          "2026-06-02,ACME PAYROLL,2500.00,deposit,,,",
-          "2026-06-03,YOU BOUGHT AAPL,-1850.50,bought,AAPL,10,185.05",
-          "2026-06-10,STREAMFLIX MONTHLY,-15.99,debit,,,",
-          "2026-06-15,BROKER FEE,-4.95,fee,,,",
-          "not-a-date,BAD ROW,-10.00,debit,,,",
-        ].join("\r\n"),
-      ),
+      buffer: Buffer.from(SAMPLE_CSV),
     });
     await settle(page, 900);
     await shot(page, "import-mapping");
@@ -165,53 +174,159 @@ try {
     await context.close();
   }
 
-  // ---- GIF: product tour --------------------------------------------------
+  // ---- GIF 1: product tour -------------------------------------------------
   {
-    const { context, page } = await newPage(browser, { width: 1080, height: 675, dsf: 1 });
-    const frames = [];
-    const frame = async (delay = 130) =>
-      frames.push({ buffer: await page.screenshot(), delay });
-
+    const { context, page } = await newPage(browser, { ...GIF_VIEW, dsf: 1 });
+    const { frames, frame } = recorder(page);
     await page.goto("/app/dashboard");
     await settle(page);
-    await frame(200);
-    await page.getByTestId("tab-1y").isVisible().catch(() => false); // range tabs have no testid — click by text
-    await page.getByRole("tab", { name: "1y" }).click();
-    await sleep(1200);
-    await frame(180);
+    await frame(HOLD);
+    for (const range of ["1y", "all"]) {
+      await page.getByRole("tab", { name: range }).click();
+      await sleep(1000);
+      await frame(900);
+    }
     await page.goto("/app/anomalies");
     await settle(page);
-    await frame(200);
+    await frame(HOLD);
     await page.getByTestId("evidence-chip").first().click();
-    await sleep(1200);
-    await frame(250);
+    await sleep(600);
+    await frame(STEP);
+    await sleep(700);
+    await frame(HOLD + 400);
     writeGif(`${OUT}/tour.gif`, frames);
     await context.close();
   }
 
-  // ---- GIF: AI investigation streaming ------------------------------------
+  // ---- GIF 2: AI investigation streaming ------------------------------------
   {
-    const { context, page } = await newPage(browser, { width: 1080, height: 675, dsf: 1 });
-    const frames = [];
-    const frame = async (delay = 130) =>
-      frames.push({ buffer: await page.screenshot(), delay });
-
+    const { context, page } = await newPage(browser, { ...GIF_VIEW, dsf: 1 });
+    const { frames, frame } = recorder(page);
     await page.goto("/app/investigations");
-    await settle(page, 800);
+    await settle(page, 700);
     await page.getByTestId("new-investigation").click();
     await page.waitForURL(/\/app\/investigations\/inv_/, { timeout: 20_000 });
     await sleep(600);
-    await frame(160);
+    await frame(700);
     await page.getByTestId("composer").fill("Why did my fees spike recently?");
-    await frame(120);
+    await frame(600);
     await page.getByTestId("send-button").click();
-    for (let i = 0; i < 10; i++) {
-      await sleep(450);
-      await frame(60);
+    for (let i = 0; i < 12; i++) {
+      await sleep(380);
+      await frame(120);
     }
-    await sleep(1200);
-    await frame(300);
+    await sleep(1000);
+    await frame(HOLD + 500);
     writeGif(`${OUT}/investigate.gif`, frames);
+    await context.close();
+  }
+
+  // ---- GIF 3: full import wizard --------------------------------------------
+  {
+    const { context, page } = await newPage(browser, { ...GIF_VIEW, dsf: 1 });
+    const { frames, frame } = recorder(page);
+    await page.goto("/app/imports/new");
+    await settle(page, 600);
+    await frame(HOLD);
+    await page.getByTestId("file-input").setInputFiles({
+      name: "brokerage-export.csv",
+      mimeType: "text/csv",
+      buffer: Buffer.from(SAMPLE_CSV),
+    });
+    await page.getByTestId("map-next").waitFor();
+    await sleep(700);
+    await frame(HOLD); // auto-mapped columns
+    await page.getByTestId("map-next").click();
+    await page.getByTestId("accepted-count").waitFor();
+    await sleep(500);
+    await frame(HOLD); // dry-run: accepted/rejected + reasons
+    await page.getByTestId("preview-next").click();
+    await sleep(500);
+    await frame(STEP);
+    await page.getByTestId("account-select").click();
+    await sleep(400);
+    await frame(STEP); // account dropdown open
+    await page.getByRole("option").first().click();
+    await frame(STEP);
+    await page.getByTestId("commit-button").click();
+    await page.waitForURL(/\/app\/imports\/batch_/, { timeout: 30_000 });
+    await settle(page, 700);
+    await frame(HOLD + 500); // batch detail with stats
+    writeGif(`${OUT}/import.gif`, frames);
+    await context.close();
+  }
+
+  // ---- GIF 4: anomaly triage with undo --------------------------------------
+  {
+    const { context, page } = await newPage(browser, { ...GIF_VIEW, dsf: 1 });
+    const { frames, frame } = recorder(page);
+    await page.goto("/app/anomalies");
+    await settle(page);
+    await frame(HOLD);
+    await page.getByRole("button", { name: "Acknowledge", exact: true }).first().click();
+    await sleep(350);
+    await frame(STEP); // card animating out + undo toast
+    await sleep(600);
+    await frame(900);
+    await page.getByRole("button", { name: "Undo" }).click();
+    await sleep(800);
+    await frame(HOLD + 400); // card restored
+    writeGif(`${OUT}/triage.gif`, frames);
+    await context.close();
+  }
+
+  // ---- GIF 5: ledger search & filters ---------------------------------------
+  {
+    const { context, page } = await newPage(browser, { ...GIF_VIEW, dsf: 1 });
+    const { frames, frame } = recorder(page);
+    await page.goto("/app/ledger");
+    await settle(page);
+    await frame(HOLD);
+    const search = page.getByPlaceholder("Search descriptions…");
+    for (const term of ["net", "netflix"]) {
+      await search.fill(term);
+      await sleep(900);
+      await frame(900);
+    }
+    await search.fill("");
+    await page.getByLabel("Filter by type").click();
+    await sleep(400);
+    await frame(STEP);
+    await page.getByRole("option", { name: "fee" }).click();
+    await sleep(900);
+    await frame(HOLD); // fee rows + chip
+    const row = page.getByTestId("ledger-table").locator("tbody tr").first();
+    await row.click();
+    await sleep(600);
+    await frame(HOLD + 400); // expanded provenance row
+    writeGif(`${OUT}/search.gif`, frames);
+    await context.close();
+  }
+
+  // ---- GIF 6: command palette + theme toggle --------------------------------
+  {
+    const { context, page } = await newPage(browser, { ...GIF_VIEW, dsf: 1 });
+    const { frames, frame } = recorder(page);
+    await page.goto("/app/dashboard");
+    await settle(page);
+    await frame(900);
+    await page.keyboard.press("ControlOrMeta+k");
+    await sleep(500);
+    await frame(HOLD); // palette open with groups
+    await page.keyboard.type("toggle");
+    await sleep(400);
+    await frame(900);
+    await page.keyboard.press("Enter"); // theme toggle
+    await sleep(900);
+    await frame(HOLD); // light theme
+    await page.keyboard.press("ControlOrMeta+k");
+    await page.keyboard.type("anom");
+    await sleep(400);
+    await frame(900);
+    await page.keyboard.press("Enter");
+    await settle(page, 800);
+    await frame(HOLD + 400); // anomalies in light theme
+    writeGif(`${OUT}/palette.gif`, frames);
     await context.close();
   }
 

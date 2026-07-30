@@ -21,10 +21,20 @@
 
 ## See it move
 
-| 90 seconds of product | AI investigation, streamed |
+| 🧭 The product in 30 seconds | 🤖 AI investigation, streamed live |
 | :-: | :-: |
 | <img src="docs/media/tour.gif" alt="Tour: dashboard range switching, anomaly queue, evidence drawer" width="440" /> | <img src="docs/media/investigate.gif" alt="AI investigator streaming an answer with tool status and citation chips" width="440" /> |
 | Dashboard → anomaly queue → **evidence drawer**: every claim in the product links back to the ledger rows behind it. | Ask a question, watch the tools run, get an answer whose **citation chips are emitted server-side from real query results** — the model cannot fabricate one. |
+
+| 📥 CSV → ledger in four steps | 🔎 Search, filter, drill in |
+| :-: | :-: |
+| <img src="docs/media/import.gif" alt="Import wizard: upload, auto-mapping, dry-run preview with rejects, commit to batch detail" width="440" /> | <img src="docs/media/search.gif" alt="Ledger full-text search narrowing results, type filter, row expansion with provenance" width="440" /> |
+| Upload → **auto-mapped columns** → dry-run preview (every reject has a reason) → idempotent commit. Nothing lands without a preview. | Debounced **full-text search**, typed filters as URL state, and row expansion showing each transaction's import provenance. |
+
+| ↩️ Triage with a real undo | ⌘K everything, light & dark |
+| :-: | :-: |
+| <img src="docs/media/triage.gif" alt="Acknowledging an anomaly with animated dismissal and a working undo toast" width="440" /> | <img src="docs/media/palette.gif" alt="Command palette navigating and toggling theme" width="440" /> |
+| Acknowledge → the card animates out and a **10-second undo** arms (it pauses while you hover). Undo puts everything back. | The **command palette** reaches every screen, account, and recent investigation — and flips the theme without leaving the keyboard. |
 
 ---
 
@@ -47,6 +57,10 @@ figure is grounded in a cited database query.
 <img src="docs/media/marketing-dark.png" alt="Marketing page, dark theme" width="440" />
 
 *Tokenized design system — every color, radius, and motion value is a CSS variable; light and dark are the same components.*
+
+<img src="docs/media/kitchen-sink.png" alt="Kitchen sink page rendering every component state" width="880" />
+
+*The kitchen sink renders every component state on one page — it's axe-audited in CI, so a contrast or ARIA regression fails the build before a reviewer ever sees it.*
 </div>
 
 ---
