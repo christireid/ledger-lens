@@ -374,10 +374,10 @@ describe("endpoint contract suite (§17.5 — every inventory row)", () => {
     expect(wrongType.status).toBe(415);
   });
 
-  it("cron: missing secret → 401", async () => {
+  it("cron: missing secret → uniform 404 (§21.9-2 anti-oracle)", async () => {
     const row = API_INVENTORY.find((r) => r.path === "/cron/nightly")!;
     const res = await invoke(row, { authed: false });
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(404);
   });
 
   it("§18.3: internal errors never leak internals (secret-marker test)", async () => {

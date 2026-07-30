@@ -57,8 +57,8 @@ export function ThreadClient({ investigationId }: { investigationId: string }) {
   });
 
   const send = React.useCallback(
-    async (content: string) => {
-      if (!content.trim() || stream.phase === "streaming") return;
+    async (content: string, isAutoRetry = false) => {
+      if (!content.trim() || (stream.phase === "streaming" && !isAutoRetry)) return;
       setDraft("");
       // optimistic user message
       qc.setQueryData(qk.investigation(investigationId), (old: { data: WireThread } | undefined) =>
@@ -97,6 +97,15 @@ export function ThreadClient({ investigationId }: { investigationId: string }) {
           const body = await res.json().catch(() => null);
           const code = body?.error?.code;
           if (code === "upstream_unavailable") setAiDegraded(true);
+          // §08.10: a 429 gets ONE automatic client retry after 5 s.
+          if (res.status === 429 && !isAutoRetry) {
+            setStream({ phase: "streaming", text: "", citations: [], toolLabel: "High demand — retrying in a moment" });
+            window.setTimeout(() => {
+              setStream({ phase: "idle" });
+              void send(content, true);
+            }, 5_000);
+            return;
+          }
           setStream({
             phase: "error",
             message: body?.error?.message ?? "The investigator could not respond.",

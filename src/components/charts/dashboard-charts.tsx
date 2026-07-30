@@ -56,11 +56,15 @@ export function ValueAreaChart({
   series: Array<{ asOf: string; totalValue: string | null }>;
 }) {
   const motionSafe = useMotionSafe();
-  const points = series
-    .filter((p) => p.totalValue !== null)
-    .map((p) => ({ asOf: p.asOf, value: Number(p.totalValue) }));
+  // §13.4-2: null points are snapshot gaps — kept so the area renders a
+  // visual break (connectNulls=false), never a fabricated line.
+  const points = series.map((p) => ({
+    asOf: p.asOf,
+    value: p.totalValue === null ? null : Number(p.totalValue),
+  }));
+  const priced = points.filter((p): p is { asOf: string; value: number } => p.value !== null);
 
-  if (points.length < 2) {
+  if (priced.length < 2) {
     return (
       <EmptyState
         variant="degraded"
@@ -70,9 +74,9 @@ export function ValueAreaChart({
     );
   }
 
-  const low = Math.min(...points.map((p) => p.value));
-  const high = Math.max(...points.map((p) => p.value));
-  const summary = `Portfolio value from ${points[0]!.asOf} to ${points.at(-1)!.asOf}, low ${low.toLocaleString("en-US", { style: "currency", currency: "USD" })}, high ${high.toLocaleString("en-US", { style: "currency", currency: "USD" })}, ending ${points.at(-1)!.value.toLocaleString("en-US", { style: "currency", currency: "USD" })}.`;
+  const low = Math.min(...priced.map((p) => p.value));
+  const high = Math.max(...priced.map((p) => p.value));
+  const summary = `Portfolio value from ${priced[0]!.asOf} to ${priced.at(-1)!.asOf}, low ${low.toLocaleString("en-US", { style: "currency", currency: "USD" })}, high ${high.toLocaleString("en-US", { style: "currency", currency: "USD" })}, ending ${priced.at(-1)!.value.toLocaleString("en-US", { style: "currency", currency: "USD" })}.`;
 
   return (
     <figure>
@@ -100,6 +104,7 @@ export function ValueAreaChart({
             <Area
               type="monotone"
               dataKey="value"
+              connectNulls={false}
               stroke={cssVar("--chart-1")}
               fill={cssVar("--chart-1")}
               fillOpacity={0.12}

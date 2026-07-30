@@ -247,6 +247,34 @@ describe("adversarial cases (§08.9c)", () => {
     });
   }
 
+  it("cross-currency sum is refused server-side (§08.11-4)", async () => {
+    const db = adminDb();
+    const [inserted] = (await db.execute(rawSql`
+      insert into transactions (workspace_id, account_id, import_batch_id, date, type, amount, currency, description)
+      select ${workspaceId}, a.id, b.id, '2026-06-01', 'fee', '-10.0000', 'EUR', 'eval eur fee'
+      from accounts a, import_batches b
+      where a.workspace_id = ${workspaceId} and b.workspace_id = ${workspaceId}
+      limit 1
+      returning id
+    `)) as unknown as Array<{ id: string }>;
+    try {
+      const { executeTool } = await import("@/server/ai/tools");
+      const outcome = await withRls(userId, (rlsDb) =>
+        executeTool(ctxFor(rlsDb), rlsDb, "aggregate_transactions", {
+          filter: { types: ["fee"] },
+          group_by: "month",
+          metric: "sum",
+        }),
+      );
+      const parsed = JSON.parse(outcome.json) as { error?: string; currencies?: string[] };
+      expect(parsed.error).toBe("cross_currency_sum_refused");
+      expect(parsed.currencies).toContain("EUR");
+      expect(outcome.citation).toBeNull();
+    } finally {
+      await db.execute(rawSql`delete from transactions where id = ${inserted!.id}`);
+    }
+  });
+
   it("no write- or network-capable tools exist (§08.12 code audit)", async () => {
     const { TOOL_SPECS } = await import("@/server/ai/tools");
     expect(TOOL_SPECS).toHaveLength(6);

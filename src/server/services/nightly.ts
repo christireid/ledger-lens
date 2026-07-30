@@ -6,6 +6,7 @@ import type { MarketDate, WorkspaceId } from "@/lib/schemas";
 import { buildCtx, type Ctx } from "@/server/context";
 import { adminDb, withRls } from "@/server/db/rls";
 import type { RlsDb } from "@/server/db/rls";
+import { breakerOpen, getTransport } from "@/server/ai/transport";
 import { detectorRegistry } from "@/server/engine/detect/registry";
 import type { DetectorKey, Finding } from "@/server/engine/detect/types";
 import { loadDetectorInput } from "@/server/services/detection";
@@ -49,12 +50,27 @@ export async function runDetectorsForWorkspace(
   let inserted = 0;
   let notified = 0;
   for (const f of findings) {
+    // §14.2/§08.2: explanation copy is generated once per new anomaly via the
+    // mini-model gateway and cached on the row; the deterministic template
+    // renders whenever the gateway yields nothing (down, breaker open, MOCK).
+    const template = detectorRegistry[f.detectorKey].explainTemplate(f);
+    let explanation = template;
+    if (!breakerOpen()) {
+      const generated = await getTransport()
+        .completeOnce({
+          intent: "explanation",
+          prompt: `Explain this portfolio anomaly to the account owner in two plain sentences, no advice. Data: ${JSON.stringify(f.explainInput)}`,
+          maxOutputTokens: 200,
+        })
+        .catch(() => "");
+      if (generated) explanation = generated;
+    }
     const rows = await db.execute(rawSql`
       insert into anomalies
         (workspace_id, type, severity, status, title, explanation, evidence_tx_ids, evidence_hash)
       values
         (${ctx.workspaceId}, ${f.detectorKey}, ${f.severity}, 'open', ${f.title},
-         ${detectorRegistry[f.detectorKey].explainTemplate(f)},
+         ${explanation},
          ${`{${f.evidenceTxIds.join(",")}}`}::uuid[], ${f.evidenceHash})
       on conflict (workspace_id, type, evidence_hash) do nothing
       returning id
@@ -67,7 +83,7 @@ export async function runDetectorsForWorkspace(
       const note = await db.execute(rawSql`
         insert into notifications (workspace_id, title, body, dedup_key, evidence)
         values (${ctx.workspaceId}, ${f.title},
-                ${detectorRegistry[f.detectorKey].explainTemplate(f)},
+                ${explanation},
                 ${`anomaly:${first.id}`},
                 ${JSON.stringify({ ids: f.evidenceTxIds })})
         on conflict (workspace_id, dedup_key) do nothing

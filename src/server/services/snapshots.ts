@@ -58,6 +58,13 @@ export async function recomputeSnapshots(
     rawSql`select pg_advisory_xact_lock(hashtext(${workspaceId}))`,
   );
 
+  // §12.5/§13.2: headline scalars are the BASE-currency vector entry — the
+  // workspace's configured base currency, never a hardcoded one.
+  const wsRows = (await db.execute(
+    rawSql`select base_currency from workspaces where id = ${workspaceId}`,
+  )) as unknown as Array<{ base_currency: string }>;
+  const baseCurrency = (wsRows[0]?.base_currency ?? "USD") as CurrencyCode;
+
   const result = await db.execute(rawSql`
     select id, account_id, date, type, amount, currency, instrument_id,
            quantity, price, superseded, created_at
@@ -114,12 +121,12 @@ export async function recomputeSnapshots(
   ) {
     const snapshot = computeSnapshot(engineTxs, date, pricing);
     const serialized = serializeSnapshot(snapshot);
-    const base = snapshot.perCurrency.get("USD" as CurrencyCode) ?? {
+    const base = snapshot.perCurrency.get(baseCurrency) ?? {
       totalValue: 0n,
       cashValue: 0n,
     };
     const realized =
-      snapshot.realizedPnlCum.get("USD" as CurrencyCode) ?? (0n as never);
+      snapshot.realizedPnlCum.get(baseCurrency) ?? (0n as never);
     const flags = partialBackfill && date === opts.today ? ["partial_backfill"] : [];
     const flagsLiteral = `{${flags.join(",")}}`;
 

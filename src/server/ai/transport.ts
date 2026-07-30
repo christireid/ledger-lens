@@ -25,6 +25,16 @@ export type TurnResult =
 
 export type Transport = {
   turn(input: { messages: ChatMessage[]; tools: ToolSpec[]; maxOutputTokens: number }): Promise<TurnResult>;
+  /**
+   * §08.2 mini-model single completions (title 60 / summary 200 / explanation
+   * 200 output tokens). Returns "" when unavailable — callers fall back to
+   * their deterministic template (§14.2).
+   */
+  completeOnce(input: {
+    intent: "title" | "summary" | "explanation";
+    prompt: string;
+    maxOutputTokens: number;
+  }): Promise<string>;
   model: string;
 };
 
@@ -86,6 +96,15 @@ function toolResults(messages: ChatMessage[]): Array<{ name: string; content: st
 function createMockTransport(): Transport {
   return {
     model: "mock-investigator",
+    // Deterministic mini-model stand-ins: title = cleaned question, summary =
+    // bounded truncation; explanation returns "" so detection keeps its
+    // template copy byte-stable under the mock (see DECISIONS.md).
+    async completeOnce({ intent, prompt, maxOutputTokens }) {
+      if (intent === "explanation") return "";
+      const text = prompt.replace(/\s+/g, " ").trim();
+      const cap = intent === "title" ? 60 : maxOutputTokens * 4;
+      return text.length > cap ? `${text.slice(0, cap - 1)}…` : text;
+    },
     async turn({ messages }) {
       const question = lastUser(messages);
       const results = toolResults(messages);
@@ -206,10 +225,46 @@ function createMockTransport(): Transport {
 }
 
 // ── Real transport (OpenAI chat completions w/ tools; smoke-tested when a key exists) ──
+
+/** §07.8: one retry on connect errors only — HTTP responses are never retried. */
+async function fetchWithConnectRetry(url: string, init: RequestInit): Promise<Response> {
+  try {
+    return await fetch(url, init);
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "TimeoutError") throw err;
+    return await fetch(url, init);
+  }
+}
+
 function createOpenAiTransport(): Transport {
   const model = process.env.OPENAI_MODEL ?? "gpt-4.1";
+  const miniModel = process.env.OPENAI_MINI_MODEL ?? "gpt-4.1-mini";
   return {
     model,
+    async completeOnce({ prompt, maxOutputTokens }) {
+      try {
+        const res = await fetchWithConnectRetry("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${env.OPENAI_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: miniModel,
+            max_tokens: maxOutputTokens,
+            messages: [{ role: "user", content: prompt }],
+          }),
+          signal: AbortSignal.timeout(15_000),
+        });
+        if (!res.ok) return "";
+        const json = (await res.json()) as {
+          choices: Array<{ message: { content: string | null } }>;
+        };
+        return json.choices[0]?.message.content?.trim() ?? "";
+      } catch {
+        return ""; // callers fall back to templates (§14.2)
+      }
+    },
     async turn({ messages, tools, maxOutputTokens }) {
       const body = {
         model,
@@ -225,7 +280,7 @@ function createOpenAiTransport(): Transport {
             : { role: m.role, content: m.content },
         ),
       };
-      const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      const res = await fetchWithConnectRetry("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${env.OPENAI_API_KEY}`,
@@ -243,6 +298,7 @@ function createOpenAiTransport(): Transport {
       }
       const json = (await res.json()) as {
         choices: Array<{
+          finish_reason?: string;
           message: {
             content: string | null;
             tool_calls?: Array<{ id: string; function: { name: string; arguments: string } }>;
@@ -250,6 +306,14 @@ function createOpenAiTransport(): Transport {
         }>;
         usage: { prompt_tokens: number; completion_tokens: number };
       };
+      // §08.10: content-filter refusals render honestly, never retried silently.
+      if (json.choices[0]?.finish_reason === "content_filter") {
+        return {
+          kind: "text",
+          tokens: tokenize("The model declined this request."),
+          usage: { in: json.usage.prompt_tokens, out: json.usage.completion_tokens },
+        };
+      }
       const choice = json.choices[0]!.message;
       if (choice.tool_calls?.length) {
         return {

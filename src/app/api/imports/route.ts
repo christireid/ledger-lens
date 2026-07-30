@@ -24,6 +24,12 @@ export const POST = withApi(
     if (!contentType.includes("multipart/form-data")) {
       throw new AppError("unsupported_media_type", "Expected multipart/form-data.");
     }
+    // §21.7: Content-Length pre-check BEFORE buffering the body (the per-file
+    // size check below re-verifies the actual bytes).
+    const declared = Number(req.headers.get("content-length") ?? 0);
+    if (declared > 11 * 1024 * 1024) {
+      throw new PayloadError("payload_too_large", "File exceeds the 10 MB limit.");
+    }
     const form = await req.formData();
     const file = form.get("file");
     if (!(file instanceof File)) {

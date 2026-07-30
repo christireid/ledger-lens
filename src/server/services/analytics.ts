@@ -5,6 +5,7 @@ import { sql as rawSql } from "drizzle-orm";
 import type { MarketDate, WorkspaceId } from "@/lib/schemas";
 import type { Ctx } from "@/server/context";
 import type { RlsDb } from "@/server/db/rls";
+import { ForbiddenError } from "@/server/errors";
 
 /**
  * Analytics engine — §13. Deterministic SQL over snapshots and the ledger;
@@ -27,12 +28,12 @@ export async function periodAggregates(
   from: MarketDate,
   to: MarketDate,
 ): Promise<PeriodAggregates[]> {
-  if (!ctx.can("transactions:read")) throw new Error("forbidden");
+  if (!ctx.can("transactions:read")) throw new ForbiddenError();
   // EXPLAIN-verified: transactions_workspace_type_date_idx (§09.5)
   const rows = await db.execute(rawSql`
     select currency,
       coalesce(sum(amount) filter (where type in ('dividend','interest')), 0)::text as income,
-      coalesce(sum(abs(amount)) filter (where type = 'fee'), 0)::text as fees,
+      coalesce(-sum(amount) filter (where type = 'fee'), 0)::text as fees, -- signed per 13.4-3: refunds net out
       coalesce(sum(amount) filter (where type in ('deposit','transfer_in','withdrawal','transfer_out')), 0)::text as net_contribution
     from transactions
     where workspace_id = ${ctx.workspaceId}
@@ -66,7 +67,7 @@ export async function snapshotSeries(
   from: MarketDate,
   to: MarketDate,
 ): Promise<SeriesPoint[]> {
-  if (!ctx.can("transactions:read")) throw new Error("forbidden");
+  if (!ctx.can("transactions:read")) throw new ForbiddenError();
   const spanDays =
     Math.round(
       (Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) /
@@ -92,12 +93,30 @@ export async function snapshotSeries(
         order by as_of
       `);
 
-  return (rows as unknown as Array<Record<string, string | null>>).map((r) => ({
+  const mapped = (rows as unknown as Array<Record<string, string | null>>).map((r) => ({
     asOf: r.as_of ?? "",
     totalValue: r.total_value ?? null,
     cashValue: r.cash_value ?? null,
     interpolated: false as const,
   }));
+  // §13.4-2: a snapshot gap mid-range yields an explicit null point so charts
+  // render a visual break, never a fabricated line.
+  const gapDays = downsample ? 8 : 1;
+  const withGaps: typeof mapped = [];
+  for (let i = 0; i < mapped.length; i++) {
+    const point = mapped[i]!;
+    withGaps.push(point);
+    const next = mapped[i + 1];
+    if (!next) continue;
+    const delta = (Date.parse(next.asOf) - Date.parse(point.asOf)) / 86_400_000;
+    if (delta > gapDays) {
+      const gapDate = new Date(Date.parse(point.asOf) + 86_400_000)
+        .toISOString()
+        .slice(0, 10);
+      withGaps.push({ asOf: gapDate, totalValue: null, cashValue: null, interpolated: false });
+    }
+  }
+  return withGaps;
 }
 
 /** §13.2 realized P&L (period) = cum(end) − cum(start-1) — subtraction, not re-replay. */
@@ -107,7 +126,7 @@ export async function realizedPnlForPeriod(
   from: MarketDate,
   to: MarketDate,
 ): Promise<string> {
-  if (!ctx.can("transactions:read")) throw new Error("forbidden");
+  if (!ctx.can("transactions:read")) throw new ForbiddenError();
   const rows = await db.execute(rawSql`
     with bounds as (
       select
@@ -136,7 +155,7 @@ export async function valueChangeForPeriod(
   from: MarketDate,
   to: MarketDate,
 ): Promise<{ change: string; endValue: string | null } | null> {
-  if (!ctx.can("transactions:read")) throw new Error("forbidden");
+  if (!ctx.can("transactions:read")) throw new ForbiddenError();
   const rows = await db.execute(rawSql`
     with bounds as (
       select

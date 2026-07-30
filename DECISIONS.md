@@ -79,3 +79,5 @@ Format per entry: date · question · options considered · choice · affected s
 **2026-07-30 · CI preview legs gated on repo variable.** §23.5's preview-deploy/E2E/LHCI stages target a Vercel preview; without Vercel credentials (operator gap) the workflow gates those legs on VERCEL_PREVIEW_ENABLED and runs E2E + Lighthouse against a local production build with seeded Postgres — the same harness used locally, keeping both stages blocking rather than skipped. Affected: 23.5, 20.8.
 
 **2026-07-30 · README media pipeline.** Screenshots/GIFs are captured from the seeded demo workspace by scripts/capture-media.mjs (Playwright + gifenc; the pinned ffmpeg build lacks a GIF encoder). Dev-dependency only; not part of any verification gate. Affected: 25.4.
+
+**2026-07-30 · Upstash timeout conflict (recorded per §27.2c).** §07.8's gateway table gives the rate-limit Redis call 500 ms/no-retry; §21.6 says "a 150 ms Redis timeout". Lower-numbered section wins → 500 ms stands. Affected: 07.8, 21.6.

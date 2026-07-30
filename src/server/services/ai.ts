@@ -3,12 +3,12 @@ import "server-only";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, sql as rawSql } from "drizzle-orm";
 
 import type { Ctx } from "@/server/context";
 import { investigations, messageCitations, messages } from "@/server/db/schema";
 import { adminDb, withRls, type RlsDb } from "@/server/db/rls";
-import { ConflictError, ForbiddenError, NotFoundError, UpstreamError } from "@/server/errors";
+import { ConflictError, ForbiddenError, NotFoundError, RateLimitError, UpstreamError } from "@/server/errors";
 import { toPublicId } from "@/lib/public-ids";
 import {
   breakerOpen,
@@ -74,13 +74,38 @@ export async function streamInvestigationMessage(
     throw new ConflictError("stream_in_progress", "An analysis is already running for this workspace.");
   }
 
-  // History window (§08.4-4): last 12 messages verbatim.
+  // §08.8/§21.6 — Postgres-backed daily caps, fail-CLOSED inside the request
+  // transaction: 100 user messages/day/user, plus an optional env-configured
+  // global daily token budget summed from ai_eval_log.
+  const capRows = (await db.execute(
+    rawSql`select count(*)::int as n from messages
+           where workspace_id = ${ctx.workspaceId} and role = 'user'
+             and created_at >= date_trunc('day', now())`,
+  )) as unknown as Array<{ n: number }>;
+  const secondsToMidnight = 86_400 - (Math.floor(Date.now() / 1000) % 86_400);
+  if ((capRows[0]?.n ?? 0) >= 100) {
+    throw new RateLimitError(secondsToMidnight);
+  }
+  const budget = Number(process.env.AI_DAILY_TOKEN_BUDGET ?? 0);
+  if (budget > 0) {
+    const usageRows = (await db.execute(
+      rawSql`select coalesce(sum((usage->>'in')::bigint + (usage->>'out')::bigint), 0)::bigint as t
+             from ai_eval_log where created_at >= date_trunc('day', now())`,
+    )) as unknown as Array<{ t: string }>;
+    if (Number(usageRows[0]?.t ?? 0) >= budget) {
+      throw new RateLimitError(secondsToMidnight);
+    }
+  }
+
+  // History window (§08.4-4): last 12 messages verbatim; older context is
+  // replaced by the stored rolling summary (injected below).
   const history = await db
     .select()
     .from(messages)
     .where(eq(messages.investigationId, investigationId))
     .orderBy(asc(messages.createdAt));
   const window = history.slice(-12);
+  const rollingSummary = history.length > window.length ? thread.summary : null;
 
   // Persist the user message inside the request's RLS transaction.
   await db.insert(messages).values({
@@ -100,10 +125,19 @@ export async function streamInvestigationMessage(
   const userId = ctx.userId;
   const encoder = new TextEncoder();
 
+  let aborted = false;
+  const startedAt = Date.now();
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
-      const send = (event: string, data: unknown) =>
-        controller.enqueue(encoder.encode(sse(event, data)));
+      // §08.6: enqueue on a cancelled controller throws — treat it as a client
+      // abort, never as an upstream failure.
+      const send = (event: string, data: unknown) => {
+        try {
+          controller.enqueue(encoder.encode(sse(event, data)));
+        } catch {
+          aborted = true;
+        }
+      };
       const heartbeat = setInterval(() => {
         try {
           controller.enqueue(encoder.encode(": ping\n\n"));
@@ -114,6 +148,7 @@ export async function streamInvestigationMessage(
 
       let fullText = "";
       const citations: Array<Citation & { ord: number }> = [];
+      const toolCallLog: string[] = [];
       let usage = { in: 0, out: 0 };
       let stopped = false;
 
@@ -127,6 +162,13 @@ export async function streamInvestigationMessage(
           { role: "user", content },
         ];
 
+        if (rollingSummary) {
+          // §08.4-4: older context replaced by the stored rolling summary.
+          chat.splice(1, 0, {
+            role: "system",
+            content: `Summary of earlier conversation: ${rollingSummary}`,
+          });
+        }
         // Workspace preamble (§08.4-3) — describe first, injected server-side.
         const preamble = await withRls(userId, (rlsDb) =>
           executeTool(ctx, rlsDb, "describe_workspace", {}),
@@ -152,6 +194,18 @@ export async function streamInvestigationMessage(
             });
             for (const call of result.calls) {
               const toolName = call.name as ToolName;
+              // §08.10: malformed args twice → tool disabled for the rest of
+              // this message; the model is told, and never re-invokes it.
+              if ((failedTools.get(call.name) ?? 0) >= 2) {
+                chat.push({
+                  role: "tool",
+                  toolCallId: call.id,
+                  name: call.name,
+                  content: JSON.stringify({ error: "tool_disabled_for_this_message" }),
+                });
+                continue;
+              }
+              toolCallLog.push(call.name);
               send("tool_status", { tool: call.name, state: "running", label: labelFor(call.name) });
               try {
                 const outcome = await withRls(userId, (rlsDb) =>
@@ -203,23 +257,30 @@ export async function streamInvestigationMessage(
           for await (const token of result.tokens) {
             fullText += token;
             send("token", { t: token });
+            if (aborted) break; // §08.6: stop generating for a gone client
           }
           usage = result.usage;
           break;
         }
 
         recordSuccess();
+        if (aborted) stopped = true; // §08.6: partial persisted with stopped: true
       } catch (err) {
-        recordFailure();
-        send("error", {
-          code: err instanceof UpstreamError ? "upstream_unavailable" : "internal_error",
-          message:
-            err instanceof UpstreamError
-              ? err.message
-              : "The investigator hit an unexpected error.",
-          retryable: true,
-        });
-        stopped = true;
+        if (aborted) {
+          // Client went away mid-stream — not an upstream failure (§07.8).
+          stopped = true;
+        } else {
+          recordFailure();
+          send("error", {
+            code: err instanceof UpstreamError ? "upstream_unavailable" : "internal_error",
+            message:
+              err instanceof UpstreamError
+                ? err.message
+                : "The investigator hit an unexpected error.",
+            retryable: true,
+          });
+          stopped = true;
+        }
       }
 
       // Persist the assistant message + citations + eval log (§08.12: required
@@ -251,23 +312,46 @@ export async function streamInvestigationMessage(
             })),
           );
         }
+        // §08.9 eval-log contract: real toolCalls and measured latency.
         await db2.execute(
           (await import("drizzle-orm")).sql`
             insert into ai_eval_log (workspace_id, message_id, prompt_version, model, tool_calls, latency_ms, usage)
             values (${workspaceIdForMutex}, ${assistantRow?.id ?? null}, ${PROMPT_VERSION}, ${transport.model},
-                    ${JSON.stringify(citations.map((c) => c.label))}, 0, ${JSON.stringify(usage)})
+                    ${JSON.stringify(toolCallLog)}, ${Date.now() - startedAt}, ${JSON.stringify(usage)})
           `,
         );
-        // Title generation on first message (§08.2) — background, mock-friendly.
+        // Title generation on first message (§08.2): mini-model single
+        // completion, truncation fallback when the gateway yields nothing.
         if (isFirstMessage && fullText) {
-          const title = content.length > 60 ? `${content.slice(0, 57)}…` : content;
+          const generated = await transport
+            .completeOnce({ intent: "title", prompt: content, maxOutputTokens: 60 })
+            .catch(() => "");
+          const title =
+            generated || (content.length > 60 ? `${content.slice(0, 57)}…` : content);
           await db2
             .update(investigations)
-            .set({ title })
+            .set({ title: title.slice(0, 120) })
             .where(eq(investigations.id, investigationId));
         }
-        if (!stopped && assistantRow) {
-          send("done", { messageId: assistantRow.id, usage, stopped: false });
+        // §08.4-4: rolling summary maintained in the background.
+        if (fullText) {
+          const summarySeed = `${thread.summary ?? ""} Q: ${content} A: ${fullText}`.trim();
+          const summary = await transport
+            .completeOnce({ intent: "summary", prompt: summarySeed, maxOutputTokens: 200 })
+            .catch(() => "");
+          if (summary) {
+            await db2
+              .update(investigations)
+              .set({ summary: summary.slice(0, 1000) })
+              .where(eq(investigations.id, investigationId));
+          }
+        }
+        if (assistantRow) {
+          send("done", {
+            messageId: toPublicId("message", assistantRow.id),
+            usage,
+            stopped,
+          });
         }
       } catch (err) {
         logEvent({
@@ -285,6 +369,7 @@ export async function streamInvestigationMessage(
     cancel() {
       // §08.6: client abort → partial persisted with stopped: true by the
       // finalize block (fullText holds what streamed); mutex released there.
+      aborted = true;
       activeStreams.delete(workspaceIdForMutex);
     },
   });

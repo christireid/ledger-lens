@@ -188,4 +188,24 @@ describe("import pipeline service (§15.5)", () => {
     expect(csv).toContain("not-a-date");
     expect(csv).toContain("date_unparseable");
   });
+
+  it("rejects CSV neutralizes leading formula characters (§21.7)", () => {
+    const csv = rejectsCsv(
+      ["Date", "Description"],
+      [
+        {
+          line: 2,
+          field: "date",
+          code: "date_unparseable" as never,
+          message: "bad",
+          raw: ["=cmd|' /C calc'!A0", "@SUM(1+1)"],
+        },
+      ],
+    );
+    const dataLine = csv.split("\r\n")[1]!;
+    for (const cell of ["'=cmd", "'@SUM"]) {
+      expect(dataLine).toContain(cell);
+    }
+    expect(/(^|,)[=+@]/.test(dataLine)).toBe(false);
+  });
 });

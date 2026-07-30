@@ -12,6 +12,19 @@ jobs:
   eval:
     name: pnpm eval (AI golden cases, §08.9)
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ledger_lens
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s
+          --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/ledger_lens
+      DIRECT_URL: postgres://postgres:postgres@localhost:5432/ledger_lens
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -20,11 +33,19 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm eval
+      - run: pnpm db:migrate
+      # §08.9: the eval report (pass/fail per case) is committed as an artifact.
+      - run: pnpm eval --reporter=default --reporter=json --outputFile=eval-report.json
         env:
           # MOCK transport unless the operator enables the real-API smoke.
           OPENAI_API_KEY: ${{ vars.OPENAI_SMOKE == 'true' && secrets.OPENAI_API_KEY || 'MOCK' }}
           OPENAI_SMOKE: ${{ vars.OPENAI_SMOKE }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eval-report
+          path: eval-report.json
+          retention-days: 30
 
   audit:
     name: pnpm audit

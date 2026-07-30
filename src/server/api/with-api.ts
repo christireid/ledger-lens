@@ -155,11 +155,15 @@ export function withApi<
         throw new UnauthorizedError();
       }
 
-      // Rate limit (§07.7) — keyed by user, IP pre-auth.
+      // Rate limit (§07.7/§21.6) — dual keys, per-user AND per-IP, so one
+      // bypass path does not void both; IP-only pre-auth.
       const scope: RateScope = options.rateScope ?? "global";
-      const rateKey = userId ?? req.headers.get("x-forwarded-for") ?? "anon";
-      const rate = await checkRateLimit(scope, rateKey);
-      if (!rate.allowed) throw new RateLimitError(rate.retryAfter);
+      const ip = req.headers.get("x-forwarded-for") ?? "anon";
+      const rateKeys = userId ? [`u:${userId}`, `ip:${ip}`] : [`ip:${ip}`];
+      for (const key of rateKeys) {
+        const rate = await checkRateLimit(scope, key);
+        if (!rate.allowed) throw new RateLimitError(rate.retryAfter);
+      }
 
       // CSRF posture (§10.3/§21): state-changing endpoints reject non-JSON.
       const method = req.method.toUpperCase();
