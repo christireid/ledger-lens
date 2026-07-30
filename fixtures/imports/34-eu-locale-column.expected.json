@@ -1,0 +1,12 @@
+{
+  "accepted": 3,
+  "rejected": [],
+  "acceptedAmounts": [
+    "1234.56",
+    "-2345.10",
+    "999.99"
+  ],
+  "euLocaleColumns": [
+    "Amount"
+  ]
+}

@@ -64,13 +64,13 @@ Spec inputs: 12, 13, 16.2 Money/Qty. Verify: golden-file suite + property tests 
 ### M4 — Import pipeline
 Spec inputs: 15, 05.9 API side, 17 import rows. Verify: 40-file adversarial corpus green; commit idempotency; seed determinism (two runs, identical output hash).
 
-- [ ] Parser
-- [ ] Mapper
-- [ ] Dry-run
-- [ ] Commit
-- [ ] Reject contract
-- [ ] Demo seed generator (15.7)
-- [ ] Verify gate green
+- [x] Parser (§15.2: encodings UTF-8/BOM/Latin-1, delimiter scoring, RFC 4180 via papaparse, headerless detection, Excel artifacts, typed whole-file rejects incl. 50k cap with count)
+- [x] Mapper (§15.3: 60+ alias dictionary ×0.6 + value-shape ×0.4, ≥0.8 auto-assign, header-signature mapping profiles; verified against 10 real broker/bank formats)
+- [x] Dry-run (§15.4: date formats in order, amount normalization w/ EU-locale per-column heuristic, type dictionary + lossy-type tally, sign auto-correct/reject, trade all-or-none, closed reject-code enum; 3-layer duplicate policy)
+- [x] Commit (§15.5: single tx, advisory lock shared w/ recompute, idempotency key, instrument upsert, source_line lineage, cross-batch dupe decision, mapping-profile persistence)
+- [x] Reject contract (§15.6: ≤10k inline jsonb; rejects.csv reproduces original columns + reject_reason)
+- [x] Demo seed generator (§15.7: deterministic, 3 accounts/12 instruments/1,280 txs/24 months, all six planted findings D1–D6 verified present, 6-reject demo import variant, version-stamped; wired into seed runner + local DB seeded)
+- [x] Verify gate green — 40-file adversarial corpus green; commit idempotency (double-commit = one batch); seed determinism (two runs identical hash); cumulative verify:all 127 unit + 30 integration (2026-07-30)
 
 ### M5 — API surface
 Spec inputs: 17 (all), 18, 07.4–7. Verify: contract tests (all rows × valid/boundary/invalid); route-walk parity test.

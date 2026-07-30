@@ -1,0 +1,9 @@
+{
+  "accepted": 0,
+  "rejected": [
+    {
+      "line": 1,
+      "code": "incomplete_trade"
+    }
+  ]
+}

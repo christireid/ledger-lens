@@ -1,0 +1,11 @@
+{
+  "accepted": 5,
+  "rejected": [],
+  "acceptedTypes": [
+    "buy",
+    "sell",
+    "dividend",
+    "withdrawal",
+    "deposit"
+  ]
+}

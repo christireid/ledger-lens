@@ -1,0 +1,9 @@
+{
+  "accepted": 1,
+  "rejected": [
+    {
+      "line": 1,
+      "code": "amount_unparseable"
+    }
+  ]
+}

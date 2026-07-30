@@ -1,0 +1,10 @@
+{
+  "syntheticHeaders": true,
+  "mapping": {
+    "date": 0,
+    "description": 1,
+    "amount": 2
+  },
+  "accepted": 2,
+  "rejected": []
+}

@@ -39,3 +39,9 @@ Format per entry: date · question · options considered · choice · affected s
 **2026-07-30 · Snapshot UPDATE grant.** 0001 granted app_user UPDATE only on "mutable" tables, omitting portfolio_snapshots; the §07.6 upsert requires UPDATE for ON CONFLICT DO UPDATE. Added grant (0004). Affected: 09.3, 21.
 
 **2026-07-30 · Zero-floats rule mechanics.** §12.8 asks for a lint rule banning number arithmetic on Money/Qty; the branded-bigint types make any number↔Money arithmetic a TypeScript compile error (bigint/number mixing is illegal), so `pnpm typecheck` is the mechanical enforcement. No separate ESLint rule needed. Affected: 12.8.
+
+**2026-07-30 · Demo dataset volume.** §15.7 says "~1,400 transactions"; the generator produces 1,280 with the D6 silence window (checking mutes its final 2 months). Options: pad with filler rows breaking realism, or accept 1,280 as within "~". Chose the latter — the normative content is the planted findings + shape, all verified by test. Affected: 15.7.
+
+**2026-07-30 · Demo seed date fixed at 2026-07-01.** §15.7 says "24 months ending at seed date"; byte-stability (§23.10-5) forbids now(). Chose the constant DEMO_SEED_DATE='2026-07-01'; planted-finding recency (D1 pair, D6 silence) is anchored to it. Regenerating with a newer anchor is a deliberate golden-refresh per §25.6. Affected: 15.7, 23.10.
+
+**2026-07-30 · Generator as plain .mjs.** The demo generator lives at supabase/seed/demo-dataset.mjs (plain JS + .d.ts) so the Node seed runner (no TS loader) and the app/tests can share one deterministic implementation. Affected: 15.7, 23.2.

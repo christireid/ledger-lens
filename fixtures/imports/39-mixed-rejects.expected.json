@@ -1,0 +1,17 @@
+{
+  "accepted": 2,
+  "rejected": [
+    {
+      "line": 2,
+      "code": "date_unparseable"
+    },
+    {
+      "line": 3,
+      "code": "amount_unparseable"
+    },
+    {
+      "line": 5,
+      "code": "amount_zero"
+    }
+  ]
+}

@@ -1,0 +1,4 @@
+Date,Description,Amount,Type,Symbol,Quantity,Price,Currency
+2026-01-05,ACME PAYROLL,2500.00,deposit,,,,
+2026-01-06,GROCERY MART,-82.13,debit,,,,
+2026-01-07,YOU BOUGHT AAPL,-1850.50,bought,AAPL,10,185.05,USD

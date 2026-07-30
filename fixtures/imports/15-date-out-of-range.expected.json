@@ -1,0 +1,13 @@
+{
+  "accepted": 1,
+  "rejected": [
+    {
+      "line": 1,
+      "code": "date_out_of_range"
+    },
+    {
+      "line": 2,
+      "code": "date_out_of_range"
+    }
+  ]
+}
