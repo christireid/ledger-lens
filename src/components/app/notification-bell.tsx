@@ -80,7 +80,12 @@ export function NotificationBell() {
                 {day}
               </p>
               {items.map((n) => (
-                <div key={n.id} className="flex gap-2 border-b px-3 py-2 last:border-0">
+                <div
+                  key={n.id}
+                  tabIndex={0}
+                  role="listitem"
+                  className="flex gap-2 border-b px-3 py-2 last:border-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
                   {!n.readAt && (
                     <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-info" aria-label="Unread" />
                   )}

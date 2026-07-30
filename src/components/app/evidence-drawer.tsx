@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { MoneyText } from "@/components/app/money-text";
@@ -72,14 +73,22 @@ export function EvidenceDrawer({
     enabled: open && descriptor !== null,
   });
 
+  const headingRef = React.useRef<HTMLHeadingElement | null>(null);
   const ledgerHref =
     descriptor?.kind === "filter" ? `/app/ledger?${descriptor.query}` : "/app/ledger";
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent data-testid="evidence-drawer">
+      <SheetContent
+        data-testid="evidence-drawer"
+        // §19.3: initial focus lands on the drawer heading, not the close button.
+        onOpenAutoFocus={(e) => {
+          e.preventDefault();
+          headingRef.current?.focus();
+        }}
+      >
         <SheetHeader>
-          <SheetTitle>
+          <SheetTitle ref={headingRef} tabIndex={-1}>
             Evidence{data?.data ? ` · ${data.data.length} transactions` : ""}
           </SheetTitle>
         </SheetHeader>

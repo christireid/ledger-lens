@@ -87,7 +87,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="flex min-h-screen">
       {/* §05.11: below-1024 interstitial for /app/* */}
       <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-3 bg-background p-8 text-center lg:hidden">
-        <p className="text-lg font-semibold">Ledger Lens works best on a larger screen</p>
+        <h1 className="text-lg font-semibold">Ledger Lens works best on a larger screen</h1>
         <p className="max-w-sm text-sm text-muted-foreground">
           The investigation workspace supports desktop and tablet-landscape viewports (1024px and up).
         </p>

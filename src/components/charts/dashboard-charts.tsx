@@ -79,8 +79,7 @@ export function ValueAreaChart({
   const summary = `Portfolio value from ${priced[0]!.asOf} to ${priced.at(-1)!.asOf}, low ${low.toLocaleString("en-US", { style: "currency", currency: "USD" })}, high ${high.toLocaleString("en-US", { style: "currency", currency: "USD" })}, ending ${priced.at(-1)!.value.toLocaleString("en-US", { style: "currency", currency: "USD" })}.`;
 
   return (
-    <figure>
-      <p className="sr-only">{summary}</p>
+    <figure role="img" aria-label={summary}>
       <div className="h-64 w-full">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={points} margin={{ top: 8, right: 8, bottom: 0, left: 8 }}>
@@ -171,8 +170,7 @@ export function AllocationDonut({
     .join(", ")}.`;
 
   return (
-    <figure>
-      <p className="sr-only">{summary}</p>
+    <figure role="img" aria-label={summary}>
       <div className="h-56 w-full">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>

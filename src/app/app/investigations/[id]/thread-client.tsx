@@ -47,6 +47,7 @@ export function ThreadClient({ investigationId }: { investigationId: string }) {
   const [aiDegraded, setAiDegraded] = React.useState(false);
   const abortRef = React.useRef<AbortController | null>(null);
   const liveRegionRef = React.useRef<HTMLDivElement>(null);
+  const announcedRef = React.useRef(-1);
   const askedRef = React.useRef(false);
 
   const { data, isLoading } = useQuery({
@@ -84,6 +85,7 @@ export function ThreadClient({ investigationId }: { investigationId: string }) {
           : old,
       );
       setStream({ phase: "streaming", text: "", citations: [], toolLabel: null });
+      announcedRef.current = -1;
       const controller = new AbortController();
       abortRef.current = controller;
       try {
@@ -134,6 +136,14 @@ export function ThreadClient({ investigationId }: { investigationId: string }) {
             const payload = JSON.parse(dataLine.slice(5));
             if (type === "token") {
               text += payload.t;
+              // §19.5-2: streamed text is buffered and announced at sentence
+              // boundaries — never per-token.
+              const boundary = text.lastIndexOf(". ");
+              if (boundary > announcedRef.current) {
+                const sentence = text.slice(announcedRef.current + 1, boundary + 1).trim();
+                announcedRef.current = boundary;
+                liveRegionRef.current?.replaceChildren(document.createTextNode(sentence));
+              }
               setStream({ phase: "streaming", text, citations: [...citations], toolLabel: null });
             } else if (type === "citation") {
               citations.push(payload);
@@ -330,7 +340,7 @@ function CitationChip({
       type="button"
       className="mr-1 mt-1 inline-flex items-center rounded-full border bg-muted px-2 py-0.5 text-xs hover:bg-accent"
       onClick={() => onOpen(citation.refIds)}
-      aria-label={`Evidence: ${count} ${citation.kind === "snapshot" ? "snapshot fields" : "transactions"}, opens drawer`}
+      aria-label={`Evidence ${citation.ord}: ${citation.label ?? `${count} ${citation.kind === "snapshot" ? "snapshot fields" : "transactions"}`}, opens drawer`}
       data-testid="citation-chip"
     >
       [{citation.label ?? `${count} txns`}]

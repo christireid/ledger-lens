@@ -71,16 +71,17 @@ export default function AnomaliesPage() {
       old ? { ...old, data: old.data.filter((a) => a.id !== anomaly.id) } : old,
     );
     let undone = false;
-    const timer = setTimeout(() => {
-      if (!undone) setStatusMutation.mutate({ id: anomaly.id, next });
-    }, 10_000);
+    // §19.3 undo toast: the countdown rides the toast's own timer, which
+    // sonner pauses on hover/focus — commit happens on real auto-close.
     toast(`${next === "acknowledged" ? "Acknowledged" : "Dismissed"} "${anomaly.title}"`, {
       duration: 10_000,
+      onAutoClose: () => {
+        if (!undone) setStatusMutation.mutate({ id: anomaly.id, next });
+      },
       action: {
         label: "Undo",
         onClick: () => {
           undone = true;
-          clearTimeout(timer);
           void qc.invalidateQueries({ queryKey: qk.anomalies(status).slice(0, 1) });
           void previous;
         },

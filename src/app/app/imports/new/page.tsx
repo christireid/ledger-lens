@@ -151,6 +151,10 @@ export default function ImportWizardPage() {
       <PageHeader title="Import transactions" />
 
       {/* Stepper — §04.6 ImportStepper: linear, no skip */}
+      {/* §19.3 wizard stepper: step transitions announce via a polite live region. */}
+      <p aria-live="polite" className="sr-only">
+        {`Step ${STEPS.findIndex((x) => x.key === step) + 1} of ${STEPS.length}: ${STEPS.find((x) => x.key === step)?.label ?? ""}`}
+      </p>
       <ol className="mb-6 flex items-center gap-2" aria-label="Import steps">
         {STEPS.map((s, i) => {
           const stateIndex = STEPS.findIndex((x) => x.key === step);

@@ -257,7 +257,7 @@ export function LedgerClient() {
           <Table data-testid="ledger-table">
             <TableHeader>
               <TableRow>
-                <TableHead>
+                <TableHead aria-sort={filters.sort === "date" ? (filters.dir === "desc" ? "descending" : "ascending") : "none"}>
                   <SortButton label="Date" col="date" filters={filters} set={set} />
                 </TableHead>
                 <TableHead>Type</TableHead>
@@ -265,7 +265,7 @@ export function LedgerClient() {
                 <TableHead>Instrument</TableHead>
                 <TableHead className="text-right">Qty</TableHead>
                 <TableHead className="text-right">Price</TableHead>
-                <TableHead className="text-right">
+                <TableHead className="text-right" aria-sort={filters.sort === "amount" ? (filters.dir === "desc" ? "descending" : "ascending") : "none"}>
                   <SortButton label="Amount" col="amount" filters={filters} set={set} />
                 </TableHead>
               </TableRow>

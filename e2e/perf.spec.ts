@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+import postgres from "postgres";
+
 import { apiPost, freshUser, signInAs } from "./helpers";
 
 /**
@@ -21,7 +23,6 @@ test.describe("ledger filter round-trip (§20.2)", () => {
     await apiPost(page, "/workspace/demo", { action: "seed" });
 
     // Top the workspace up to 50k rows via SQL (fast single INSERT..SELECT).
-    const { default: postgres } = await import("postgres");
     const sql = postgres(DB_URL, { prepare: false, max: 1 });
     try {
       const [ws] = await sql`
@@ -48,10 +49,15 @@ test.describe("ledger filter round-trip (§20.2)", () => {
 
     // 20 filter interactions: alternate type filter and text search, including
     // the §20.9-3 worst case (single-character search).
-    const searches = ["n", "ne", "net", "perf", "fee", "row 1", "a", "de", "payroll", "x"];
+    // 20 unique terms — a repeat would serve from the client cache (§20.6)
+    // and never hit the network. Includes the §20.9-3 single-character worst case.
+    const searches = [
+      "n", "ne", "net", "perf", "fee", "row 1", "a", "de", "payroll", "x",
+      "b", "ro", "row 2", "row 3", "fil", "ler", "row 4", "w", "row 5", "row 6",
+    ];
     const durations: number[] = [];
     for (let i = 0; i < 20; i++) {
-      const term = searches[i % searches.length]!;
+      const term = searches[i]!;
       const started = Date.now();
       const responsePromise = page.waitForResponse(
         (r) => r.url().includes("/api/transactions") && r.status() === 200,
@@ -60,10 +66,24 @@ test.describe("ledger filter round-trip (§20.2)", () => {
       const box = page.getByPlaceholder(/search/i);
       await box.fill(term);
       await responsePromise;
-      // render settle: the table re-renders synchronously after the response
-      await page.getByTestId("ledger-table").waitFor();
+      // render settle: either the updated table or the filtered-empty state.
+      await page
+        .locator('[data-testid="ledger-table"], [data-variant="filtered-empty"]')
+        .first()
+        .waitFor({ timeout: 10_000 });
       durations.push(Date.now() - started);
     }
+    // Clean up the 48k synthetic rows — the supersedes index (0006) makes
+    // this a fast direct delete.
+    const cleanup = postgres(DB_URL, { prepare: false, max: 1 });
+    try {
+      await cleanup`delete from transactions where workspace_id in
+        (select id from workspaces where clerk_user_id = ${user})`;
+      await cleanup`delete from workspaces where clerk_user_id = ${user}`;
+    } finally {
+      await cleanup.end();
+    }
+
     durations.sort((a, b) => a - b);
     const p95 = durations[Math.ceil(durations.length * 0.95) - 1]!;
     console.log(`ledger filter p95=${p95}ms (all: ${durations.join(",")})`);
