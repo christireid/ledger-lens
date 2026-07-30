@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import type { z } from "zod";
 
 import type { AccountInputSchema, AccountPatchSchema } from "@/lib/schemas/api";
@@ -13,7 +13,7 @@ export async function listAccounts(ctx: Ctx, db: RlsDb, includeArchived: boolean
   if (!ctx.can("transactions:read")) throw new ForbiddenError();
   const conditions = [eq(accounts.workspaceId, ctx.workspaceId)];
   if (!includeArchived) {
-    conditions.push(eq(accounts.archivedAt, null as never));
+    conditions.push(isNull(accounts.archivedAt));
   }
   return db
     .select()

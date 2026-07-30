@@ -24,10 +24,14 @@ check "raw hex colors outside globals.css" \
     --exclude=globals.css --exclude-dir=node_modules \
     -e '(color|background|fill|stroke|border)[^;{]{0,20}#[0-9a-fA-F]{3,8}\b' src
 
-# 2. Arbitrary Tailwind color/spacing values, e.g. p-[13px], bg-[#fff] (§04.3.4)
-check "arbitrary Tailwind values" \
+# 2. Arbitrary Tailwind COLOR/SPACING values, e.g. p-[13px], bg-[#fff] (§04.13).
+# Sizing constraints (max-w-[1440px] is the §03.4 shell spec) are not banned.
+check "arbitrary Tailwind color values" \
   grep -rnE --include='*.tsx' \
-    '(class(Name)?=.*\[(#|[0-9]+px|[0-9]+rem))' src
+    '(bg|text|border|from|to|via|fill|stroke|ring)-\[#' src
+check "arbitrary Tailwind spacing values" \
+  grep -rnE --include='*.tsx' \
+    "[\"' ]-?(p|m)(x|y|t|b|l|r|s|e)?-\[[0-9]+(px|rem)\]|gap-\[|space-(x|y)-\[" src
 
 # 3. style= outside chart geometry (§04.13) — charts dir exempt
 check "inline style outside chart geometry" \

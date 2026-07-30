@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql as rawSql } from "drizzle-orm";
 import type { z } from "zod";
 
 import type { AlertRuleInputSchema, AlertRulePatchSchema } from "@/lib/schemas/api";
@@ -29,6 +29,25 @@ export async function createAlertRule(
   input: z.infer<typeof AlertRuleInputSchema>,
 ) {
   if (!ctx.can("alerts:manage")) throw new ForbiddenError();
+  // Pre-check duplicates — a 23505 inside the RLS transaction aborts it, so
+  // the friendly-409 lookup must happen BEFORE the insert (§18.6-6 race still
+  // covered below, minus the existing-id nicety).
+  const [dupe] = await db
+    .select({ id: alertRules.id })
+    .from(alertRules)
+    .where(
+      and(
+        eq(alertRules.workspaceId, ctx.workspaceId),
+        eq(alertRules.type, input.type),
+        rawSql`md5(${alertRules.params}::text) = md5(${JSON.stringify(input.params)}::jsonb::text)`,
+      ),
+    )
+    .limit(1);
+  if (dupe) {
+    throw new ConflictError("duplicate_rule", "An identical rule already exists.", {
+      existingId: dupe.id,
+    });
+  }
   try {
     const [row] = await db
       .insert(alertRules)
@@ -43,15 +62,8 @@ export async function createAlertRule(
     return row!;
   } catch (err) {
     if (isUniqueViolation(err)) {
-      // §17.2: 409 duplicate_rule with the existing rule id (S-08)
-      const [existing] = await db
-        .select({ id: alertRules.id })
-        .from(alertRules)
-        .where(and(eq(alertRules.workspaceId, ctx.workspaceId), eq(alertRules.type, input.type)))
-        .limit(1);
-      throw new ConflictError("duplicate_rule", "An identical rule already exists.", {
-        existingId: existing?.id,
-      });
+      // Two-tab race (§18.6-6): same 409, existing id unavailable mid-abort.
+      throw new ConflictError("duplicate_rule", "An identical rule already exists.");
     }
     throw err;
   }

@@ -68,7 +68,11 @@ const serverSchema = z
     }
   });
 
-const parsed = serverSchema.safeParse(process.env);
+// Empty strings in .env files mean "unset" — normalize before parsing.
+const cleaned = Object.fromEntries(
+  Object.entries(process.env).filter(([, v]) => v !== ""),
+);
+const parsed = serverSchema.safeParse(cleaned);
 
 if (!parsed.success) {
   const detail = parsed.error.issues

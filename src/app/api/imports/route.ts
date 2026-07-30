@@ -1,4 +1,5 @@
 import { CursorQuerySchema } from "@/lib/schemas/api";
+import { toPublicId } from "@/lib/public-ids";
 import { created, ok, withApi } from "@/server/api/with-api";
 import { batchToWire } from "@/server/api/wire";
 import { AppError, PayloadError } from "@/server/errors";
@@ -36,7 +37,7 @@ export const POST = withApi(
     try {
       const result = await createDraftBatch(ctx, db, { name: file.name, content });
       return created({
-        id: result.batchId,
+        id: toPublicId("batch", result.batchId),
         headers: result.parsed.headers,
         sampleRows: result.parsed.rows.slice(0, 20),
         rowCount: result.parsed.rows.length,

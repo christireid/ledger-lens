@@ -85,11 +85,11 @@ Spec inputs: 17 (all), 18, 07.4–7. Verify: contract tests (all rows × valid/b
 ### M6 — App shell & screens
 Spec inputs: 03, 04, 05 (S-01…S-13), 06.5–11. Verify: Playwright E2E US-01…US-05, US-07; hydration gate; kitchen-sink screenshots.
 
-- [ ] Tokens → components → screens in 05's build order
-- [ ] Query factory
-- [ ] URL state
-- [ ] Forms
-- [ ] Verify gate green
+- [x] Tokens → components → screens in 05's build order (22 vendored ui primitives; icon registry §04.8; AppShell w/ sidebar+topbar+freshness+bell+palette+g-shortcuts §03.9; MoneyText/SeverityBadge/FreshnessIndicator/EmptyState/EvidenceDrawer per §04.6 contracts; S-01 marketing, S-03 dashboard (4 zones + charts w/ sr-only summaries), S-04 ledger (FilterBar, chips, sort, cursor load-more, row expansion+lineage), S-05 anomalies (tabs, bulk ack, optimistic 10s undo), S-06/07 investigations (SSE consumer, citations, degraded banner), S-08 alerts (schema-driven forms + preview), S-09/10/11 imports (4-step wizard), S-12 settings (5 tabs incl. danger zone), S-13 system screens + interstitial + kitchen-sink)
+- [x] Query factory (qk + normalize §06.5.1; invalidateAfterImportCommit centralized; useAppMutation w/ §18.4 retry rules; apiFetch envelope parser bypassing browser HTTP cache)
+- [x] URL state (useUrlFilters — Zod parse w/ defaults, 300ms debounce, history semantics; US-03 URL reconstruction proven in E2E)
+- [x] Forms (RHF + zodResolver, shadcn Form aria bridge; alert dialog schema-driven per type)
+- [x] Verify gate green — Playwright US-01…US-05 + US-07 walkthroughs, hydration gate, kitchen-sink screenshot: 9/9 passing against a production build w/ §20.8 test-session auth; cumulative verify:all + contract (73) + integration (30) green (2026-07-30). Bugs found & fixed by the E2E pass: batch public-ID mismatch, browser HTTP-cache staleness, eq(col,null) zero-rows, duplicate-rule tx-abort, demo-seed missing recompute, tsquery prefix search
 
 ### M7 — Detection & alerts
 Spec inputs: 14, 05.6/05.8. Verify: detector fixtures (planted findings all fire on demo data); dedup double-run test; preview-parity test.

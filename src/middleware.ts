@@ -54,8 +54,19 @@ const withClerk = clerkMiddleware(async (auth, req) => {
   return apply(req, userId !== null) ?? NextResponse.next();
 });
 
+function testSessionAuthed(req: NextRequest): boolean {
+  // §20.8 preview/E2E test sessions — enabled only when DEMO_E2E_SECRET is set
+  // (asserted absent in prod by the env module).
+  const secret = process.env.DEMO_E2E_SECRET;
+  if (!secret) return false;
+  const headerSecret = req.headers.get("x-demo-e2e-secret");
+  if (headerSecret === secret && req.headers.get("x-demo-user-id")) return true;
+  const cookie = req.cookies.get("demo_e2e_session")?.value;
+  return cookie?.startsWith(`${secret}:`) ?? false;
+}
+
 function keyless(req: NextRequest) {
-  return apply(req, false) ?? NextResponse.next();
+  return apply(req, testSessionAuthed(req)) ?? NextResponse.next();
 }
 
 export default hasClerkKeys ? withClerk : keyless;

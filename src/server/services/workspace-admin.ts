@@ -6,6 +6,9 @@ import type { Ctx } from "@/server/context";
 import { accounts, importBatches, instruments, workspaces } from "@/server/db/schema";
 import type { RlsDb } from "@/server/db/rls";
 import { ForbiddenError, NotFoundError } from "@/server/errors";
+import { recomputeSnapshots } from "@/server/services/snapshots";
+import { runDetectorsForWorkspace } from "@/server/services/nightly";
+import type { MarketDate } from "@/lib/schemas";
 // eslint-disable-next-line no-restricted-imports -- shared .mjs generator (§15.7)
 import { generateDemoDataset } from "../../../supabase/seed/demo-dataset.mjs";
 
@@ -135,5 +138,13 @@ export async function demoAction(
       })),
     );
   }
+  // §07.6: demo seed runs inline (synchronous) — snapshot + detectors so the
+  // dashboard and anomaly queue are populated the moment seeding returns.
+  const today = new Date().toISOString().slice(0, 10) as MarketDate;
+  await recomputeSnapshots(db, ctx.workspaceId, {
+    today,
+    earliestAffectedDate: dataset.transactions[0]?.date as MarketDate,
+  });
+  await runDetectorsForWorkspace(ctx, db, today, { includeNightlyOnly: true });
   return { transactions: dataset.transactions.length };
 }

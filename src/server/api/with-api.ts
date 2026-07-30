@@ -98,6 +98,15 @@ async function resolveUserId(req: Request): Promise<string | null> {
     const provided = req.headers.get("x-demo-e2e-secret");
     const testUser = req.headers.get("x-demo-user-id");
     if (provided === testSecret && testUser) return testUser;
+    // Browser E2E path: cookie "demo_e2e_session=<secret>:<userId>"
+    const cookieHeader = req.headers.get("cookie") ?? "";
+    const match = /(?:^|;\s*)demo_e2e_session=([^;]+)/.exec(cookieHeader);
+    if (match) {
+      const decoded = decodeURIComponent(match[1] ?? "");
+      if (decoded.startsWith(`${testSecret}:`)) {
+        return decoded.slice(testSecret.length + 1);
+      }
+    }
   }
   if (env.CLERK_SECRET_KEY && process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) {
     const { auth } = await import("@clerk/nextjs/server");

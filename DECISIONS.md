@@ -53,3 +53,11 @@ Format per entry: date · question · options considered · choice · affected s
 **2026-07-30 · Detector registry built in M5.** §27.4 lists the registry as an M7 output, but M5's alerts endpoints require §14.2 paramsSchemas and the preview endpoint requires run(). Built the full registry (D1–D6) in M5; M7 still owns its verification battery (fixtures on demo data, dedup double-run, preview parity, abstention tests). Gates unaffected — they are cumulative. Affected: 14.2, 27.4.
 
 **2026-07-30 · Test-session auth for contract/E2E.** With Clerk keys absent, contract tests and E2E need a session mechanism. §20.8/§23.4 define DEMO_E2E_SECRET (preview-only, asserted absent in prod). withApi accepts x-demo-e2e-secret + x-demo-user-id when the env var is set — the same mechanism the spec prescribes for preview E2E. Affected: 20.8, 23.4, 10.3.
+
+**2026-07-30 · Client HTTP cache bypass.** §17.2 gives GET /dashboard a 60s private cache; the browser then serves pre-mutation payloads after imports/seeding (TanStack Query §06.5 is the intended client cache). apiFetch now sends cache:"no-store"; the header remains for CDN/curl consumers. Affected: 17.2, 06.5.
+
+**2026-07-30 · Demo seed recomputes inline.** §07.6's demo-seed row is "inline in bootstrap (synchronous, 3s budget)". Seeding now recomputes snapshots (366-day backfill) + runs detectors before returning (measured 1.5s locally) so the dashboard and anomaly queue are populated immediately. Affected: 07.6, 15.7.
+
+**2026-07-30 · Arch-grep scope.** The M0 arbitrary-value grep flagged sizing utilities (max-w-[1440px] — itself the §03.4 shell spec) beyond §04.13's "color/spacing" ban. Narrowed to color/spacing arbitraries; the §04.3.3 type scale is respected (text-[10px] instances replaced with scale values). Affected: 04.13, 04.3.4.
+
+**2026-07-30 · E2E runs against a production build.** Dev-server on-demand compilation caused flaky timeouts; §23.5's E2E stage targets a deployed (production) build anyway. playwright webServer = next build && next start. Affected: 22, 23.5.

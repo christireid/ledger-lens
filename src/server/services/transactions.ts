@@ -41,9 +41,18 @@ export async function listTransactions(ctx: Ctx, db: RlsDb, q: TxQuery & { accou
   if (q.minAmount) conditions.push(rawSql`abs(${transactions.amount}) >= ${q.minAmount}`);
   if (q.maxAmount) conditions.push(rawSql`abs(${transactions.amount}) <= ${q.maxAmount}`);
   if (q.q) {
-    conditions.push(
-      rawSql`to_tsvector('simple', immutable_unaccent(${transactions.description})) @@ plainto_tsquery('simple', immutable_unaccent(${q.q}))`,
-    );
+    // Prefix-match each term ('netflix' finds 'NETFLIX.COM'); accent-insensitive.
+    const tsquery = q.q
+      .split(/\s+/)
+      .map((t) => t.replace(/[^\p{L}\p{N}.]/gu, ""))
+      .filter(Boolean)
+      .map((t) => `${t}:*`)
+      .join(" & ");
+    if (tsquery) {
+      conditions.push(
+        rawSql`to_tsvector('simple', immutable_unaccent(${transactions.description})) @@ to_tsquery('simple', immutable_unaccent(${tsquery}))`,
+      );
+    }
   }
   if (!q.includeArchived) {
     conditions.push(
