@@ -1,6 +1,7 @@
 import "server-only";
 
 import { env } from "@/server/env";
+import { logEvent } from "@/server/obs/logger";
 
 /**
  * Rate limiting — §07.7. Upstash Redis sliding window keyed by userId (IP
@@ -47,7 +48,9 @@ export async function checkRateLimit(
     }
     return { allowed: true };
   } catch {
-    console.warn(`rate-limit: Upstash unreachable — failing open (scope=${scope})`);
+    // §21.6/§24.5 — fail open, but count it: this event feeds the fail-open
+    // rate metric and its Sentry threshold alert.
+    logEvent({ level: "warn", event: "ratelimit_failopen", meta: { scope } });
     return { allowed: true };
   }
 }

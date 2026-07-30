@@ -9,6 +9,8 @@ import { withRls, type RlsDb } from "@/server/db/rls";
 import { env } from "@/server/env";
 import { AppError, RateLimitError, UnauthorizedError } from "@/server/errors";
 import { checkRateLimit, type RateScope } from "@/server/api/rate-limit";
+import { hashUserId, logEvent } from "@/server/obs/logger";
+import { captureError } from "@/server/obs/sentry";
 import { resolveWorkspace } from "@/server/services/workspace";
 
 /**
@@ -77,7 +79,15 @@ export function serializeError(err: unknown, requestId: string): Response {
     );
   }
   // §18.3: generic message ONLY — no stacks, SQL, or internals cross the wire.
-  console.error(`[${requestId}] unhandled`, err);
+  // §24.2/§24.4: structured line + scrubbed Sentry capture carry the details.
+  logEvent({
+    level: "error",
+    event: "error",
+    requestId,
+    errorCode: "internal_error",
+    meta: { name: err instanceof Error ? err.name : typeof err },
+  });
+  captureError(err, { requestId });
   return Response.json(
     {
       error: {
@@ -134,11 +144,13 @@ export function withApi<
   ): Promise<Response> => {
     const requestId = randomUUID().slice(0, 8);
     const started = Date.now();
+    let res: Response | undefined;
+    let userId: string | null = null;
     try {
       const params = (await routeCtx?.params) ?? {};
 
       // Auth (§10.3): userId exclusively from the verified session.
-      const userId = await resolveUserId(req);
+      userId = await resolveUserId(req);
       if (options.auth !== "none" && !userId) {
         throw new UnauthorizedError();
       }
@@ -175,7 +187,7 @@ export function withApi<
 
       // No-session public routes handle their own auth (webhook/cron).
       if (!userId) {
-        return await handler({
+        res = await handler({
           ctx: undefined as never,
           db: undefined as never,
           body: body as never,
@@ -184,21 +196,31 @@ export function withApi<
           req,
           requestId,
         });
+        return res;
       }
 
       // Workspace resolution (§10.4) inside the RLS transaction (§10.5).
-      const response = await withRls(userId, async (db) => {
-        const resolved = await resolveWorkspace(db, userId);
+      const uid = userId;
+      res = await withRls(uid, async (db) => {
+        const resolved = await resolveWorkspace(db, uid);
+        // §24.2 Ctx.logger — structured lines; "note" carries the fixed
+        // developer-authored message (meta values still pass redaction).
+        const svcLog = (level: "info" | "warn" | "error") =>
+          (msg: string, m?: Record<string, unknown>) =>
+            logEvent({
+              level,
+              event: "service",
+              requestId,
+              userIdHash: hashUserId(uid),
+              workspaceId: resolved.workspaceId,
+              meta: { note: msg, ...(m ?? {}) },
+            });
         const ctx = buildCtx({
-          userId,
+          userId: uid,
           workspaceId: resolved.workspaceId,
           role: resolved.role,
           db,
-          logger: {
-            info: (msg, m) => console.log(`[${requestId}] ${msg}`, m ?? ""),
-            warn: (msg, m) => console.warn(`[${requestId}] ${msg}`, m ?? ""),
-            error: (msg, m) => console.error(`[${requestId}] ${msg}`, m ?? ""),
-          },
+          logger: { info: svcLog("info"), warn: svcLog("warn"), error: svcLog("error") },
         });
         return handler({
           ctx,
@@ -210,12 +232,22 @@ export function withApi<
           requestId,
         });
       });
-      return response;
+      return res;
     } catch (err) {
-      return serializeError(err, requestId);
+      res = serializeError(err, requestId);
+      return res;
     } finally {
-      const ms = Date.now() - started;
-      console.log(`[${requestId}] ${req.method} ${new URL(req.url).pathname} ${ms}ms`);
+      // §24.2 request event — one line per request, schema fields only.
+      logEvent({
+        level: "info",
+        event: "request",
+        requestId,
+        route: new URL(req.url).pathname,
+        method: req.method,
+        ...(res ? { status: res.status } : {}),
+        latencyMs: Date.now() - started,
+        ...(userId ? { userIdHash: hashUserId(userId) } : {}),
+      });
     }
   };
 }

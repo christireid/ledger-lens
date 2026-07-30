@@ -3,6 +3,7 @@ import "server-only";
 import type { MarketDate } from "@/lib/schemas";
 import type { Ctx } from "@/server/context";
 import { withRls } from "@/server/db/rls";
+import { logEvent } from "@/server/obs/logger";
 import { recomputeSnapshots } from "@/server/services/snapshots";
 import { runDetectorsForWorkspace } from "@/server/services/nightly";
 
@@ -29,7 +30,11 @@ export async function recomputeAfterChange(
       });
     } catch (err) {
       // Documented degradation (§07.6): stale-snapshot state + nightly self-heal.
-      console.error("recompute waitUntil failed", err);
+      logEvent({
+        level: "error",
+        event: "service",
+        meta: { note: "recompute waitUntil failed", name: err instanceof Error ? err.name : typeof err },
+      });
     }
   })();
 

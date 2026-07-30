@@ -18,8 +18,19 @@ export async function GET(): Promise<Response> {
   }
   checks.ai = env.OPENAI_API_KEY && env.OPENAI_API_KEY !== "MOCK" ? "ok" : "unconfigured";
   const healthy = checks.database === "ok";
-  return Response.json(
-    { data: { status: healthy ? "healthy" : "degraded", checks } },
-    { status: healthy ? 200 : 503 },
-  );
+  if (!healthy) {
+    // §24.6: unhealthy returns the standard §17.1 error envelope — no
+    // version, schema, or dependency detail beyond the check outcomes.
+    return Response.json(
+      {
+        error: {
+          code: "upstream_unavailable",
+          message: "Service degraded.",
+          requestId: "health",
+        },
+      },
+      { status: 503 },
+    );
+  }
+  return Response.json({ data: { status: "healthy", checks } }, { status: 200 });
 }

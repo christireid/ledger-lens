@@ -18,6 +18,7 @@ import {
   type ChatMessage,
 } from "@/server/ai/transport";
 import { executeTool, TOOL_SPECS, type Citation, type ToolName } from "@/server/ai/tools";
+import { logEvent } from "@/server/obs/logger";
 
 /**
  * AI investigation service — §08. The model narrates; the database answers.
@@ -269,7 +270,12 @@ export async function streamInvestigationMessage(
           send("done", { messageId: assistantRow.id, usage, stopped: false });
         }
       } catch (err) {
-        console.error("ai finalize failed", err);
+        logEvent({
+          level: "error",
+          event: "ai_stream",
+          workspaceId: workspaceIdForMutex,
+          meta: { note: "finalize failed", name: err instanceof Error ? err.name : typeof err },
+        });
       } finally {
         clearInterval(heartbeat);
         activeStreams.delete(workspaceIdForMutex);

@@ -51,7 +51,21 @@ export default tseslint.config(
         "error",
         { fixStyle: "inline-type-imports" },
       ],
+      // §24.10 — no bare console outside the structured logger.
+      "no-console": "error",
     },
+  },
+  {
+    // The logger is the sanctioned stdout writer (§24.2); tests, scripts, and
+    // E2E specs are operator-facing, not runtime log surface.
+    files: [
+      "src/server/obs/logger.ts",
+      "**/*.test.ts",
+      "e2e/**",
+      "scripts/**",
+      "evals/**",
+    ],
+    rules: { "no-console": "off" },
   },
   {
     // The icon registry itself is the single permitted lucide-react importer.
