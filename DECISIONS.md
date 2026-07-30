@@ -65,3 +65,7 @@ Format per entry: date · question · options considered · choice · affected s
 **2026-07-30 · D2 evaluates historical months.** §14.3 D2 defines the spike test for "a month" vs its trailing baseline; evaluating only the latest full month would miss the §15.7 planted spike (3 months back) whenever detectors run later — contradicting §07.6's "every job computes from ledger state" idempotency. D2 now tests every full month against its own trailing-6 baseline. Affected: 14.3, 07.6.
 
 **2026-07-30 · Demo dataset v1.1.0.** The D4 walk (78→89%) evaluated retrospectively sat inside its own trailing-90d median. Added a steep finale (two large equity buys in the last week) so the drift exceeds 5pp at the seed date; version bumped per §15.7's baseline-invalidation rule. Affected: 15.7.
+
+**2026-07-30 · Real-transport shape.** §08.3 names the OpenAI Responses API; the real transport uses chat-completions-with-tools via fetch behind the same Transport seam (no SDK dependency, mock/real symmetrical). Swapping to the Responses API is a transport-internal change gated by the §08.9 eval suite, exercisable only when an operator key exists. Affected: 08.3, 07.8.
+
+**2026-07-30 · Mock transport semantics.** With OPENAI_API_KEY=MOCK the deterministic mock routes intents to tools and answers strictly from tool-result JSON (verbatim figures, [c:N] markers, scripted refusals). The M8 gate is explicitly "mocked transport: tool wiring + citation + refusal cases" (§27.4) — model-quality evaluation activates with a real key via the same suite. Affected: 08.9, 22, 27.4.

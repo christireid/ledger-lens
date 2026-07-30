@@ -2,7 +2,7 @@
   "name": "ledger-lens",
   "version": "0.1.0",
   "private": true,
-  "description": "AI-assisted financial investigation workspace — turn a pile of financial exports into an explainable, queryable, alert-driven picture of what actually happened to your money.",
+  "description": "AI-assisted financial investigation workspace \u2014 turn a pile of financial exports into an explainable, queryable, alert-driven picture of what actually happened to your money.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -16,7 +16,7 @@
     "test:contract": "vitest run --config vitest.contract.config.ts --passWithNoTests",
     "test:engine": "vitest run src/server/engine --passWithNoTests",
     "e2e": "playwright test",
-    "eval": "vitest run evals --passWithNoTests",
+    "eval": "vitest run --config vitest.evals.config.ts --passWithNoTests",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node scripts/db-migrate.mjs",
     "db:seed": "node scripts/db-seed.mjs",

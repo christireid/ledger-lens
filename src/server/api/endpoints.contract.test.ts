@@ -205,7 +205,7 @@ function validCaseFor(row: EndpointRow): Case | null {
     "POST /investigations/:id/messages": {
       params: { id: toPublicId("investigation", fx.investigationId) },
       body: { content: "what happened?" },
-      status: 503, // AI gateway lands in M8 — designed degraded state (§07.8)
+      status: 200, // SSE stream (§17.3) — M8 gateway live (mocked transport)
     },
     "DELETE /investigations/:id": {
       params: { id: toPublicId("investigation", fx.investigationId) },
@@ -354,7 +354,7 @@ describe("endpoint contract suite (§17.5 — every inventory row)", () => {
         ...(c.body !== undefined ? { body: c.body } : {}),
       });
       expect(res.status, key).toBe(c.status);
-      if (res.status !== 204 && !key.endsWith("rejects.csv") && key !== "GET /docs") {
+      if (res.status !== 204 && !key.endsWith("rejects.csv") && key !== "GET /docs" && key !== "POST /investigations/:id/messages") {
         const parsed = await res.json();
         if (res.status < 400) expect(parsed).toHaveProperty("data");
         else expect(parsed).toHaveProperty("error");

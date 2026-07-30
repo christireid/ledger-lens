@@ -103,12 +103,12 @@ Spec inputs: 14, 05.6/05.8. Verify: detector fixtures (planted findings all fire
 ### M8 — AI investigation
 Spec inputs: 08, 17.3, 05.7. Verify: `pnpm eval` (mocked transport green); US-06 E2E with mock; one real-API smoke if key present.
 
-- [ ] Gateway + breaker
-- [ ] Six tools
-- [ ] SSE loop
-- [ ] Citations
-- [ ] Eval suite
-- [ ] Verify gate green
+- [x] Gateway + breaker (transport seam: mock (OPENAI_API_KEY=MOCK, §22) + real OpenAI impl; §07.8 breaker — open after 3 consecutive failures, 60s half-open; 30s stream-start timeout)
+- [x] Six tools (§08.3 exactly: query/aggregate/positions/series/anomalies/describe — Zod-validated, service-layer scoped, 8KB truncation w/ marker keeping recent entries, cross-currency sum refusal §08.11-4, read-only audit-asserted)
+- [x] SSE loop (§17.3 protocol: tool_status/citation/token/done|error + 15s heartbeats; ≤6 rounds w/ partial-investigation forcing; per-workspace stream mutex → 409; tool-failure isolation w/ retry-then-disable §08.10; prompt v3 w/ verbatim grounding contract, workspace preamble, 12-message window; assistant rows persist promptVersion/model/usage (schema-enforced); title generation on first message)
+- [x] Citations (§08.5: chips emitted server-side from real tool results — model cannot fabricate; [c:N] marker resolution asserted; public-ID mapping for the drawer contract)
+- [x] Eval suite (29 cases green: 12 answerable phrasings + figure-vs-SQL-truth string matches + persistence checks, 8 refusal/advice, adversarial injections ×8 descriptions + tool-surface audit + 409 concurrency)
+- [x] Verify gate green — `pnpm eval` 29/29 (mocked transport); US-06 E2E 3/3 (streaming, chips → drawer rows, explicit refusal, starter pre-send); real-API smoke SKIPPED — no operator key (HALT item; runs automatically once OPENAI_API_KEY is a real key); cumulative contract 73 / integration 40 / verify:all green (2026-07-30)
 
 ### M9 — Hardening & launch
 Spec inputs: 19, 20, 21, 22 gaps, 24, 25. Verify: Lighthouse CI ≥ budgets; axe zero serious/critical; `pnpm verify:all` fully green.
