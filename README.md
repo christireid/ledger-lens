@@ -21,20 +21,20 @@
 
 ## See it move
 
-| 🧭 The product in 30 seconds | 🤖 AI investigation, streamed live |
+| 🧭 Every number opens its evidence | 🤖 AI investigation, streamed live |
 | :-: | :-: |
-| <img src="docs/media/tour.gif" alt="Tour: dashboard range switching, anomaly queue, evidence drawer" width="440" /> | <img src="docs/media/investigate.gif" alt="AI investigator streaming an answer with tool status and citation chips" width="440" /> |
-| Dashboard → anomaly queue → **evidence drawer**: every claim in the product links back to the ledger rows behind it. | Ask a question, watch the tools run, get an answer whose **citation chips are emitted server-side from real query results** — the model cannot fabricate one. |
+| <img src="docs/media/tour.gif" alt="Dashboard: switching the chart range to 1y then all, then opening the evidence drawer behind the Total value stat card" width="440" /> | <img src="docs/media/investigate.gif" alt="Typing a question, tools running, answer streaming in, then a citation chip opening the evidence drawer" width="440" /> |
+| Re-range the chart, then click a headline figure: the **evidence drawer** opens on the exact ledger rows that produced it. No number is a dead end. | Ask, watch the tools run, read the answer — then open a **citation chip**: it was emitted server-side from a real query, so it lands on the 26 rows behind the claim. |
 
 | 📥 CSV → ledger in four steps | 🔎 Search, filter, drill in |
 | :-: | :-: |
 | <img src="docs/media/import.gif" alt="Import wizard: upload, auto-mapping, dry-run preview with rejects, commit to batch detail" width="440" /> | <img src="docs/media/search.gif" alt="Ledger full-text search narrowing results, type filter, row expansion with provenance" width="440" /> |
-| Upload → **auto-mapped columns** → dry-run preview (every reject has a reason) → idempotent commit. Nothing lands without a preview. | Debounced **full-text search**, typed filters as URL state, and row expansion showing each transaction's import provenance. |
+| Upload → **auto-mapped columns** → dry-run preview (4 accepted, 1 rejected *with its reason*) → commit to an immutable batch. Nothing lands unpreviewed. | Debounced **full-text search**, typed filters that live in the URL, a live match count, and row expansion revealing each row's import provenance. |
 
 | ↩️ Triage with a real undo | ⌘K everything, light & dark |
 | :-: | :-: |
 | <img src="docs/media/triage.gif" alt="Acknowledging an anomaly with animated dismissal and a working undo toast" width="440" /> | <img src="docs/media/palette.gif" alt="Command palette navigating and toggling theme" width="440" /> |
-| Acknowledge → the card animates out and a **10-second undo** arms (it pauses while you hover). Undo puts everything back. | The **command palette** reaches every screen, account, and recent investigation — and flips the theme without leaving the keyboard. |
+| Acknowledge → the card animates out, the queue count ticks down, and a **10-second undo** arms (it pauses while you hover). Undo restores everything. | ⌘K reaches every screen, account, and recent investigation — then flips **dark ↔ light** without touching the mouse. |
 
 ---
 
